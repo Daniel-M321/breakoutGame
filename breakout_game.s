@@ -1,6 +1,4 @@
   # Breakout game
-  # Fearghal Morgan
-  # Oct 2022
 
   # ====== Register allocation START ======
   # x0 always = 0
@@ -46,8 +44,8 @@
     #jal x1, clearArena 
     #jal x1, waitForGameGo    # wait for IOIn(2) input to toggle 0-1-0
     
-    addi x2, x0, 0x58  ## init stack pointer (sp) # somehow this works and doesnt display on memory, even if balls go to same byte????
-    addi x2, x2, -16    ## reserves 4x32 bit words
+    addi x2, x0, 0x6c  ## init stack pointer (sp). Game uses 16x32-bit memory locations (low 64 bytes addresses), we can use 0x40 and above
+    addi x2, x2, -16   ## reserves 4x32 bit words
 
     jal x1, setupDefaultArena # initialise arena values 
     #jal x1, setupArena1       
