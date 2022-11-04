@@ -71,6 +71,7 @@
       jal x1, chkBallZone     # find ball zone, update 1. ball, 2. wall, 3. score, 4. lives, loop or end game   *****Retuun x19 NSBallXAdd, x21 NSBallXAdd
       jal x1, updateBallVec   
       jal x1, updateBallMem   # clear CSBallYAdd row, write ballVec to NSBallYAdd, CSBallYAdd = NSBallYAdd (and for XAdd too) 
+      jal x1, updateWallMem   ## update wall status, this might want to live elsewhere for nested function calls
       jal x1, UpdateScoreMem
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
@@ -141,21 +142,14 @@
 
 
   updateBallMem: 		     # write to memory. Requires NSBallXAdd and NSBallYAdd. 
-    sw   x17, 0(x21)        ## storing ball vector in NSBallYAdd
+    sw   x17, 0(x21)     ## storing ball vector in NSBallYAdd
+    sw x0, 0(x20)        ## delete current state of ball after the next state has been written
 
-    add x18, x0, x19  ## CSBallXAdd = NSBallXAdd
-    add x20, x0, x21  ## CSBallYAdd = NSBallYAdd
-    add x22, x0, x23  ## ballCSDir = ballNSDir
-    
-    addi x4, x0, 2
-    bgt x23, x4, deleteAbove  ## needs revising because of inside wall situation, deletes previous ball due to ballNSDir
-    addi x5, x21, -4
-    sw x0, 0(x5)
-    jalr x0, 0(x1)           # ret
+    add x18, x0, x19     ## CSBallXAdd = NSBallXAdd
+    add x20, x0, x21     ## CSBallYAdd = NSBallYAdd
+    add x22, x0, x23     ## ballCSDir = ballNSDir
+    jalr x0, 0(x1)       # ret
 
-    deleteAbove:
-    sw x0, 4(x21)
-    jalr x0, 0(x1)
 
   ##ret_updateBallMem:
     ##jalr x0, 0(x1)          # ret
@@ -205,10 +199,18 @@
     jalr x0, 0(x1)
 
     zone3:  # test code, change me
+    and x31, x16, x17             ## AND ball and wall vector to see if the ball is against a wall piece
+    bgt x31, x0, incrementScore   ## if AND resulted in 1, we can delete the wall piece and increment score
+    #beq x31, x0, zone6
     addi x23, x0, 4
     addi x21, x20, -4
     addi x19, x18, 0
     jalr x0, 0(x1)
+
+    incrementScore:
+    xor x16, x16, x17             ## XOR ball and wall to remove wall piece since 1 and 1 -> 0 with XOR
+    addi x29, x29, 1              ## increment score
+    beq x0, x0, zone3
 
     zone2:  # test code, change me
     addi x23, x0, 1
