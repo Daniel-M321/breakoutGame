@@ -1,6 +1,4 @@
   # Breakout game
-  # Fearghal Morgan
-  # Oct 2022
 
   # ====== Register allocation START ======
   # x0 always = 0
@@ -46,25 +44,18 @@
     #jal x1, clearArena 
     #jal x1, waitForGameGo    # wait for IOIn(2) input to toggle 0-1-0
     
-    addi x2, x0, 0x100  ## init stack pointer (sp)
-    addi x2, x2, -32    ## reserves 8x32 bit words
+    addi x2, x0, 0x6c  ## init stack pointer (sp). Game uses 16x32-bit memory locations (low 64 bytes addresses), we can use 0x40 and above
+    addi x2, x2, -16   ## reserves 4x32 bit words
 
     jal x1, setupDefaultArena # initialise arena values 
-    addi x2, x2, 32  ## restore sp back to init
     #jal x1, setupArena1       
     
     jal x1, updateWallMem
-    addi x2, x2, 32  ##
     jal x1, updateBallVec
-    addi x2, x2, 32  ##
     jal x1, updateBallMem
-    addi x2, x2, 32  ##
     jal x1, updatePaddleMem
-    addi x2, x2, 32  ##
     jal x1, UpdateScoreMem
-    addi x2, x2, 32  ##
     jal x1, UpdateLivesMem
-    addi x2, x2, 32  ##
     add x8, x0, x28           # load paddleNumDlyCounter start value
     add x9, x0, x24           # load ballNumDlyCounter start value
 
@@ -74,26 +65,25 @@
       bne x8, x0, processBall # paddleNumDlyCounter = 0? => skip chkPaddle
       jal x1, chkPaddle # read left/right controls to move paddle between left and right boundaries
       jal x1, updatePaddleMem
-      addi x2, x2, 32  ##
       add x8,  x0, x28        # load paddleNumDlyCounter start value
     processBall:
       bne x9, x0, loop1       # ballNumDlyCounter = 0? => skip check ball functions 
       jal x1, chkBallZone     # find ball zone, update 1. ball, 2. wall, 3. score, 4. lives, loop or end game   *****Retuun x19 NSBallXAdd, x21 NSBallXAdd
-      addi x2, x2, 32  ##
       jal x1, updateBallVec   
       jal x1, updateBallMem   # clear CSBallYAdd row, write ballVec to NSBallYAdd, CSBallYAdd = NSBallYAdd (and for XAdd too) 
       jal x1, UpdateScoreMem
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
       jal x0, loop1
-
+    
+    addi x2, x2, 16  ## restore sp back to init
     1b: jal x0, 1b           # loop until reset asserted
   
 
   # ====== Wall functions START ======
   updateWallMem:
     addi x5, x0, 60   ## using x5 as memory out
-    sw   x16, 0(x5)  ##x16 wall at top y address
+    sw   x16, 0(x5)   ##x16 wall at top y address
     jalr x0,  0(x1)          # ret
   # ====== Wall functions END ======
 
@@ -116,56 +106,75 @@
     northWest:
     addi x21, x20, 4
     addi x19, x18, 1
+    jalr x0, 0(x1)
 
     north:
     addi x21, x20, 4
     addi x19, x18, 0
+    jalr x0, 0(x1)
 
     northEast:
     addi x21, x20, 4
     addi x19, x18, -1
+    jalr x0, 0(x1)
 
     southWest:
     addi x21, x20, -4
     addi x19, x18, 1
+    jalr x0, 0(x1)
 
     south:
     addi x21, x20, -4
     addi x19, x18, 0
+    jalr x0, 0(x1)
 
     southEast:
     addi x21, x20, -4
     addi x19, x18, -1
+    jalr x0, 0(x1)
    
 
   updateBallVec:            # Generate new ballVec using x19 (NSBallXAdd)
     addi x17, x0, 1
-    sll  x17, x17, x19  # shift ball vector to ballNSXAdd
+    sll  x17, x17, x19  ## shift ball vector to ballNSXAdd
     jalr x0, 0(x1)           # ret
 
 
   updateBallMem: 		     # write to memory. Requires NSBallXAdd and NSBallYAdd. 
-    sw   x17, 0(x21)        ## storing ball vector in NSYAdd
+    sw   x17, 0(x21)        ## storing ball vector in NSBallYAdd
+
+    add x18, x0, x19  ## CSBallXAdd = NSBallXAdd
+    add x20, x0, x21  ## CSBallYAdd = NSBallYAdd
+    add x22, x0, x23  ## ballCSDir = ballNSDir
+    
+    addi x4, x0, 2
+    bgt x23, x4, deleteAbove  ## needs revising because of inside wall situation, deletes previous ball due to ballNSDir
+    addi x5, x21, -4
+    sw x0, 0(x5)
     jalr x0, 0(x1)           # ret
+
+    deleteAbove:
+    sw x0, 4(x21)
+    jalr x0, 0(x1)
 
   ##ret_updateBallMem:
     ##jalr x0, 0(x1)          # ret
 
 
-  chkBallZone: ## adding functionality
-    addi x4, x0, 14
+  chkBallZone:
+    addi x4, x0, 56
     bgt x20, x4, zone6  ## if highest y address (y=15), ball in wall
     addi x4, x0, 30
     bgt x18, x4, leftWall ## if highest x address (x=31), ball at left wall
     addi x4, x0, 1
     blt x18, x4, rightWall ## if lowest x address (x=0), ball at right wall
-    addi x4, x0, 13
+    addi x4, x0, 52
     bgt x20, x4, zone3 ## if 2nd highest y address (y=14), ball just below wall
-    addi x4, x0, 5
+    addi x4, x0, 16
     blt x20, x4, zone2  ## if y below y=5, ball above paddle zone
     addi x14, x0, 1  ## if nothing branches we are in centre
 
-    ## NS direction will stay same   ### we start in zone 2 so need to move up
+    add x23, x0, x22  ## in centre, direction stays same
     sw x1, 0(x2)  ## store return address (ra) on sp
     addi x2, x2, 4  ## increment sp
     jal x1, updateBallLocationLinear ## nested call
@@ -178,27 +187,33 @@
     jalr x0, 0(x1)
 
     leftWall:
-    addi x4, x0, 4
+    addi x4, x0, 12
     blt x20, x4, zone7  ## if y is just above paddle zone, ball at bottom left corner
-    addi x4, x0, 14
+    addi x4, x0, 52
     blt x20, x4, zone5  ## if y is between corners, ball against left wall not in corners
     addi x14, x0, 8  ## ball in top left corner
     # top left corner code
     jalr x0, 0(x1)
 
     rightWall:
-    addi x4, x0, 4
+    addi x4, x0, 12
     blt x20, x4, zone10  ## if y is above just paddle zone, ball at bottom right corner
-    addi x4, x0, 14
+    addi x4, x0, 52
     blt x20, x4, zone4  ## if y is between corners, ball against right wall not in corners
     addi x14, x0, 9  ## ball in top right corner
     # top right corner code
     jalr x0, 0(x1)
 
-    zone3:
+    zone3:  # test code, change me
+    addi x23, x0, 4
+    addi x21, x20, -4
+    addi x19, x18, 0
     jalr x0, 0(x1)
 
-    zone2:
+    zone2:  # test code, change me
+    addi x23, x0, 1
+    addi x21, x20, 4
+    addi x19, x18, 0
     jalr x0, 0(x1)
 
     zone7:
@@ -222,7 +237,8 @@
 
   # ====== Paddle functions START ======
   updatePaddleMem:     # Generate new paddleVec and write to memory. Requires paddleSize and paddleXAddLSB 
-  jalr x0, 0(x1)      # ret
+    sw   x25, 8(x0)
+    jalr x0, 0(x1)      # ret
 
 
   chkPaddle:
@@ -238,14 +254,12 @@
 
   # ====== Score and Lives functions START ======
   UpdateScoreMem:  
-  addi x5, x0, 0      # memory base address
-  sw   x29, 0(x5)     # store score 
-  jalr x0, 0(x1)      # ret
+    sw   x29, 0(x0)     # store score 
+    jalr x0, 0(x1)      # ret
 
   UpdateLivesMem:  
-  addi x5, x0, 0      # memory base address
-  sw   x30, 8(x5)     # store lives
-  jalr x0, 0(x1)      # ret
+    sw   x30, 4(x0)     # store lives
+    jalr x0, 0(x1)      # ret
 
   # ====== Score and Lives functions END ======
 
@@ -266,17 +280,17 @@
     addi x18, x0, 16    # CSBallXAdd (4:0)
     addi x19, x0, 16    # NSBallXAdd (4:0)
     addi x17, x0, 1
-    sll x17, x17, x19   ## putting ball in location regarding x19, NSxAdd
+    sll x17, x17, x19   ## putting ball in location regarding x19, NSBallXAdd
     addi x20, x0, 12    # CSBallYAdd (4:0)
     addi x21, x0, 12    # NSBallYAdd (4:0)
-    addi x22, x0, 6     # CSBallDir  (2:0) N 
-    addi x23, x0, 6	  # NSBallDir  (2:0) N
-    addi x24, x0, 1     # ballNumDlyCounter (4:0)
+    addi x22, x0, 1     # CSBallDir  (2:0) N 
+    addi x23, x0, 1	  # NSBallDir  (2:0) N
+    lui x24, 0x00098     # ballNumDlyCounter (4:0)  ## enough delay to see ball move
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 2     # paddleXAddLSB
-    addi x28, x0, 1     # paddleNumDlyCounter 
+    addi x28, x0, 10     # paddleNumDlyCounter 
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
@@ -299,12 +313,12 @@
     addi x21, x0, 12     # NSBallYAdd (4:0) ## same^
     addi x22, x0, 6     # CSBallDir  (2:0)  NW
     addi x23, x0, 6	  # NSBallDir  (2:0)  NW
-    addi x24, x0, 20    # ballNumDlyCounter (4:0)
+    addi x24, x0, 0x5    # ballNumDlyCounter (4:0)
   # Paddle
     lui  x25, 0x007f8   # 0x007f8000 paddleVec = 0b0000 0000 0111 1111 1000 0000 0000 0000
     addi x26, x0, 8     # paddleSize
     addi x27, x0, 3     # paddleXAddLSB
-    addi x28, x0, 10    # paddleNumDlyCounter 
+    addi x28, x0, 0x4    # paddleNumDlyCounter 
   # Score
     addi x29, x0, 3     # score
     addi x30, x0, 5     # lives 
