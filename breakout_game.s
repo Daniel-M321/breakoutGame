@@ -199,11 +199,9 @@
     addi x4, x0, 2
     beq x22, x4, JMPNE  ## NE=2
     addi x4, x0, 3
-    beq x22, x4, JMPSW  ## SW=3
-    addi x4, x0, 4
-    beq x22, x4, JMPS   ## S=4
+    beq x22, x4, JMPSE  ## SE=3
     addi x4, x0, 5
-    beq x22, x4, JMPSE  ## SE=5
+    beq x22, x4, JMPSW  ## SW=5
     jalr x0, 0(x1)
 
   JMPNW:              ## function to put ball going north west
