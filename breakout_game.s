@@ -123,6 +123,7 @@
     blt x20, x4, zone2  ## if y below y=5, ball above paddle zone
     addi x14, x0, 1  ## if nothing branches we are in centre
 
+    zone1:
     sw x1, 0(x2)  ## store return address (ra) on sp
     addi x2, x2, 4  ## increment sp
     jal x1, updateBallLocationLinear ## nested call
@@ -203,37 +204,38 @@
     beq x22, x4, JMPS   ## S=4
     addi x4, x0, 5
     beq x22, x4, JMPSE  ## SE=5
+    jalr x0, 0(x1)
 
   JMPNW:              ## function to put ball going north west
-    addi x21, x21, 1  ## NSy = CSy+1
+    addi x21, x21, 4  ## NSy = CSy+4
     addi x19, x19, 1  ## NSx = CSx+1
     addi x23, x0, 0   ## dir = 0, -> NW
     jalr x0, 0(x1)
 
   JMPN:               ## north
-    addi x21, x21, 1  ## NSy = CSy+1 
+    addi x21, x21, 4  ## NSy = CSy+4 
     addi x23, x0, 1   ## dir = 1, -> N
     jalr x0, 0(x1)
 
   JMPNE:              ## north east
-    addi x21, x21, 1  ## NSy = CSy+1
+    addi x21, x21, 4  ## NSy = CSy+4
     addi x19, x19, -1 ## NSx = CSx-1
     addi x23, x0, 2   ## dir = 2, -> NE
     jalr x0, 0(x1)
 
   JMPSE:              ## south east
-    addi x21, x21, -1 ## NSy = CSy-1
+    addi x21, x21, -4 ## NSy = CSy-4
     addi x19, x19, -1 ## NSx = CSx-1
     addi x23, x0, 3   ## dir = 3, -> SE
     jalr x0, 0(x1)
 
   JMPS:               ## south
-    addi x21, x21, -1 ## NSy = CSy-1
+    addi x21, x21, -4 ## NSy = CSy-4
     addi x23, x0, 4   ## dir = 4, -> S
     jalr x0, 0(x1)
 
   JMPSW:              ## south west
-    addi x21, x21, -1 ## NSy = CSy-1
+    addi x21, x21, -4 ## NSy = CSy-4
     addi x19, x19, 1  ## NSx = CSx+1
     addi x23, x0, 5   ## dir = 5, -> SW
     jalr x0, 0(x1)
