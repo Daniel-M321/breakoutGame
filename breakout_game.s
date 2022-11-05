@@ -51,8 +51,8 @@
     #jal x1, setupArena1       
     
     jal x1, updateWallMem
-    jal x1, updateBallVec
-    jal x1, updateBallMem
+    sw   x17, 0(x21)          ## storing ball vector in NSBallYAdd
+    #jal x1, updateBallMem
     jal x1, updatePaddleMem
     jal x1, UpdateScoreMem
     jal x1, UpdateLivesMem
@@ -177,12 +177,21 @@
     jalr x0, 0(x1)
 
     zone5:
+    beq x22, x0, JMPNE            ## if CSdir = NW -> NSdir = NE
+    addi x4, x0, 5
+    beq x22, x4, JMPSE            ## if CSdir = SW -> NSdir = SE
+    beq x0, x0, updateBallLocationLinear  ## ball will go either N or S linearly
     jalr x0, 0(x1)
 
     zone10:
     jalr x0, 0(x1)
 
     zone4:
+    addi x4, x0, 2
+    beq x22, x4, JMPNW            ## if CSdir = NE -> NSdir = NW
+    addi x4, x0, 3
+    beq x22, x4, JMPSW            ## if CSdir = SE -> NSdir = SW
+    beq x0, x0, updateBallLocationLinear  ## ball will go either N or S linearly
     jalr x0, 0(x1)
 
 
@@ -192,10 +201,12 @@
 
 
   ## ====== Functions for zones START ======
-  updateBallLocationLinear:  ## update linear ball direction according to CSBallDir
-    beq x22, x0, JMPNW  ## NW=0 
+  updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
     addi x4, x0, 1
     beq x22, x4, JMPN   ## N=1
+    addi x4, x0, 4
+    beq x22, x4, JMPS   ## S=4
+    beq x22, x0, JMPNW  ## NW=0 
     addi x4, x0, 2
     beq x22, x4, JMPNE  ## NE=2
     addi x4, x0, 3
