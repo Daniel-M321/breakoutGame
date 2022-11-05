@@ -236,6 +236,39 @@
   # ====== Ball functions END ======
 
 
+  ## ====== Functions for zones START ======
+
+  JMPNW:              ## function to put ball going north west
+    addi x21, x21, 1  ## NSy = CSy+1
+    addi x19, x19, 1  ## NSx = CSx+1
+    addi x23, x0, 0   ## dir = 0, -> NW
+
+  JMPN:               ## north
+    addi x21, x21, 1  ## NSy = CSy+1 
+    addi x23, x0, 1   ## dir = 1, -> N
+  
+  JMPNE:              ## north east
+    addi x21, x21, 1  ## NSy = CSy+1
+    addi x19, x19, -1 ## NSx = CSx-1
+    addi x23, x0, 2   ## dir = 2, -> NE
+
+  JMPSE:              ## south east
+    addi x21, x21, -1 ## NSy = CSy-1
+    addi x19, x19, -1 ## NSx = CSx-1
+    addi x23, x0, 3   ## dir = 3, -> SE
+
+  JMPS:               ## south
+    addi x21, x21, -1 ## NSy = CSy-1
+    addi x23, x0, 4   ## dir = 4, -> S
+
+  JMPSW:              ## south west
+    addi x21, x21, -1 ## NSy = CSy-1
+    addi x19, x19, 1  ## NSx = CSx+1
+    addi x23, x0, 5   ## dir = 5, -> SW
+
+  ## ====== Functions for zones END ======
+
+
 
   # ====== Paddle functions START ======
   updatePaddleMem:     # Generate new paddleVec and write to memory. Requires paddleSize and paddleXAddLSB 
