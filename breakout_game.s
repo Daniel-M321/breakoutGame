@@ -90,51 +90,6 @@
 
 
   # ====== Ball functions START ======
-  updateBallLocationLinear:  ## update linear ball direction according to CSBallDir  ### check it dir 0-5
-    beq x22, x0, northWest  ## dir = 0 -> NW 
-    addi x4, x0, 1
-    beq x22, x4, north  ## dir = 1 -> N
-    addi x4, x0, 2
-    beq x22, x4, northEast  ## dir = 2 -> NE
-    addi x4, x0, 3
-    beq x22, x4, southWest  ## dir = 3 -> SW
-    addi x4, x0, 4
-    beq x22, x4, south  ## dir = 4 -> S
-    addi x4, x0, 5
-    beq x22, x4, southEast  ## die = 5 -> SE
-    jalr x0, 0(x1)
-
-    northWest:
-    addi x21, x20, 4
-    addi x19, x18, 1
-    jalr x0, 0(x1)
-
-    north:
-    addi x21, x20, 4
-    addi x19, x18, 0
-    jalr x0, 0(x1)
-
-    northEast:
-    addi x21, x20, 4
-    addi x19, x18, -1
-    jalr x0, 0(x1)
-
-    southWest:
-    addi x21, x20, -4
-    addi x19, x18, 1
-    jalr x0, 0(x1)
-
-    south:
-    addi x21, x20, -4
-    addi x19, x18, 0
-    jalr x0, 0(x1)
-
-    southEast:
-    addi x21, x20, -4
-    addi x19, x18, -1
-    jalr x0, 0(x1)
-   
-
   updateBallVec:            # Generate new ballVec using x19 (NSBallXAdd)
     addi x17, x0, 1
     sll  x17, x17, x19  ## shift ball vector to ballNSXAdd
@@ -168,7 +123,6 @@
     blt x20, x4, zone2  ## if y below y=5, ball above paddle zone
     addi x14, x0, 1  ## if nothing branches we are in centre
 
-    add x23, x0, x22  ## in centre, direction stays same
     sw x1, 0(x2)  ## store return address (ra) on sp
     addi x2, x2, 4  ## increment sp
     jal x1, updateBallLocationLinear ## nested call
@@ -237,34 +191,52 @@
 
 
   ## ====== Functions for zones START ======
+  updateBallLocationLinear:  ## update linear ball direction according to CSBallDir
+    beq x22, x0, JMPNW  ## NW=0 
+    addi x4, x0, 1
+    beq x22, x4, JMPN   ## N=1
+    addi x4, x0, 2
+    beq x22, x4, JMPNE  ## NE=2
+    addi x4, x0, 3
+    beq x22, x4, JMPSW  ## SW=3
+    addi x4, x0, 4
+    beq x22, x4, JMPS   ## S=4
+    addi x4, x0, 5
+    beq x22, x4, JMPSE  ## SE=5
 
   JMPNW:              ## function to put ball going north west
     addi x21, x21, 1  ## NSy = CSy+1
     addi x19, x19, 1  ## NSx = CSx+1
     addi x23, x0, 0   ## dir = 0, -> NW
+    jalr x0, 0(x1)
 
   JMPN:               ## north
     addi x21, x21, 1  ## NSy = CSy+1 
     addi x23, x0, 1   ## dir = 1, -> N
-  
+    jalr x0, 0(x1)
+
   JMPNE:              ## north east
     addi x21, x21, 1  ## NSy = CSy+1
     addi x19, x19, -1 ## NSx = CSx-1
     addi x23, x0, 2   ## dir = 2, -> NE
+    jalr x0, 0(x1)
 
   JMPSE:              ## south east
     addi x21, x21, -1 ## NSy = CSy-1
     addi x19, x19, -1 ## NSx = CSx-1
     addi x23, x0, 3   ## dir = 3, -> SE
+    jalr x0, 0(x1)
 
   JMPS:               ## south
     addi x21, x21, -1 ## NSy = CSy-1
     addi x23, x0, 4   ## dir = 4, -> S
+    jalr x0, 0(x1)
 
   JMPSW:              ## south west
     addi x21, x21, -1 ## NSy = CSy-1
     addi x19, x19, 1  ## NSx = CSx+1
     addi x23, x0, 5   ## dir = 5, -> SW
+    jalr x0, 0(x1)
 
   ## ====== Functions for zones END ======
 
