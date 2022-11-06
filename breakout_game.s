@@ -174,9 +174,9 @@
     jalr x0, 0(x1)
 
     zone7:
-    and x4, x25, x17
-    beq x4, x0, endRound
-    addi x23, x23, 2
+    and x4, x25, x17              ## if ball and paddle are beside each other, AND will result in 1
+    beq x4, x0, endRound          ## therefore if paddle not below, we lose a life
+    addi x23, x0, 2               ## however if the paddle is below, we can bounce the ball
     bne x4, x0, JMPNE
     jalr x0, 0(x1)
 
@@ -188,6 +188,10 @@
     jalr x0, 0(x1)
 
     zone10:
+    and x4, x25, x17              ## if ball and paddle are beside each other, AND will result in 1
+    beq x4, x0, endRound          ## therefore if paddle not below, we lose a life
+    addi x23, x0, 0               ## however if the paddle is below, we can bounce the ball
+    bne x4, x0, JMPNW
     jalr x0, 0(x1)
 
     zone4:
@@ -206,6 +210,7 @@
 
   ## ====== Functions for zones START ======
   endRound:
+
     jalr x0, 0(x1)
 
   updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
