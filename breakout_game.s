@@ -290,7 +290,7 @@
     addi x4, x4, 8                # 0x00030008 # IOIn(31:0) address 
     lw   x3, 0(x4)                # read IOIn(31:0) switches
     
-    lui x4, 0x80000                   ## x4 = 0x80000000
+    lui x4, 0x80000               ## x4 = 0x80000000
     and x31, x4, x25              ## if the paddle is against left wall this AND will result in a positive value
     bne x31, x0, chkCanMoveRight  ## if positive, we cannot move the paddle left
 
