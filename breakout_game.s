@@ -210,19 +210,19 @@
 
   ## ====== Functions for zones START ======
   endRound:
-    addi x30, x30, -1
+    addi x30, x30, -1   ## decrementing a life 
     beq x30, x0, endGame
-    ## ball
-    addi x18, x0, 16    # CSBallXAdd (4:0)
-    addi x19, x0, 16    # NSBallXAdd (4:0)
+    # ball
+    addi x18, x0, 16    ## CSBallXAdd (4:0)
+    addi x19, x0, 16    ## NSBallXAdd (4:0)
     addi x17, x0, 1
     sll x17, x17, x19   ## putting ball back in middle using NSBallXAdd
-    addi x20, x0, 12    # CSBallYAdd (4:0)
-    addi x21, x0, 12    # NSBallYAdd (4:0)
-    addi x22, x0, 1     # CSBallDir  (2:0) N 
-    addi x23, x0, 1	  # NSBallDir  (2:0) N
+    addi x20, x0, 12    ## CSBallYAdd (4:0)
+    addi x21, x0, 12    ## NSBallYAdd (4:0)
+    addi x22, x0, 1     ## CSBallDir  (2:0) N 
+    addi x23, x0, 1	    ## NSBallDir  (2:0) N
     # paddle
-    lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
+    lui  x25, 0x0007c   ## paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     jalr x0, 0(x1)
 
   updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
@@ -284,11 +284,38 @@
 
 
   chkPaddle:
-  # read left/right paddle control switches, memory address 0x00030008
-  # one clock delay is required in memory peripheral to register change in switch state
-  lui  x4, 0x00030    # 0x00030000 
-  addi x4, x4, 8      # 0x00030008 # IOIn(31:0) address 
-  lw   x3, 0(x4)      # read IOIn(31:0) switches
+    # read left/right paddle control switches, memory address 0x00030008
+    # one clock delay is required in memory peripheral to register change in switch state
+    lui  x4, 0x00030              # 0x00030000 
+    addi x4, x4, 8                # 0x00030008 # IOIn(31:0) address 
+    lw   x3, 0(x4)                # read IOIn(31:0) switches
+    
+    lui x4, 0x80000               ## x4 = 0x80000000
+    and x31, x4, x25              ## if the paddle is against left wall this AND will result in a positive value
+    bne x31, x0, chkCanMoveRight  ## if positive, we cannot move the paddle left
+
+    addi x4, x0, 1                ## x4 = 0x00000001
+    and x31, x4, x25              ## if the paddle is against right wall this AND will result in a positive value
+    bne x31, x0, chkCanMoveLeft   ## if positive, we cannot move the paddle right
+
+    chkCanMoveRight:
+    addi x4, x0, 1
+    beq x4, x3, movePaddleRight   ## if IOIn = 01, paddle goes right
+    bne x31, x0, ret_chkPaddle    ## if ball against left wall and we cant move -> exit. else if not against wall, check it we can move left.
+
+    chkCanMoveLeft:
+    addi x4, x0, 2
+    beq x4, x3, movePaddleLeft    ## if IOIn = 10, paddle goes left 
+    beq x0, x0, ret_chkPaddle     ## if IOIn = 00 or 11, paddle does not move
+
+    movePaddleRight:
+    srli x25, x25, 1              ## shift right 1
+    beq x0, x0, ret_chkPaddle
+
+    movePaddleLeft:
+    slli x25, x25, 1              ## shift left 1
+    beq x0, x0, ret_chkPaddle 
+
   ret_chkPaddle:
     jalr x0, 0(x1)    # ret
   # ====== Paddle functions END ======
@@ -322,17 +349,17 @@
     addi x18, x0, 16    # CSBallXAdd (4:0)
     addi x19, x0, 16    # NSBallXAdd (4:0)
     addi x17, x0, 1
-    sll x17, x17, x19   ## putting ball in location regarding x19, NSBallXAdd
+    sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
     addi x20, x0, 12    # CSBallYAdd (4:0)
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N 
-    addi x23, x0, 1	  # NSBallDir  (2:0) N
-    lui x24, 0x00098     # ballNumDlyCounter (4:0)  ## enough delay to see ball move
+    addi x23, x0, 1	    # NSBallDir  (2:0) N
+    lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 2     # paddleXAddLSB
-    addi x28, x0, 10     # paddleNumDlyCounter 
+    lui  x28, 0x00098   # paddleNumDlyCounter 
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
