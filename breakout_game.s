@@ -51,7 +51,7 @@
     #jal x1, setupArena1       
     
     jal x1, updateWallMem
-    sw   x17, 0(x21)          ## storing ball vector in NSBallYAdd
+    sw   x17, 0(x21)          ## storing init ball vector in NSBallYAdd
     #jal x1, updateBallMem
     jal x1, updatePaddleMem
     jal x1, UpdateScoreMem
@@ -136,7 +136,7 @@
     jalr x0, 0(x1)
 
     leftWall:
-    addi x4, x0, 12
+    addi x4, x0, 16
     blt x20, x4, zone7  ## if y is just above paddle zone, ball at bottom left corner
     addi x4, x0, 52
     blt x20, x4, zone5  ## if y is between corners, ball against left wall not in corners
@@ -145,7 +145,7 @@
     jalr x0, 0(x1)
 
     rightWall:
-    addi x4, x0, 12
+    addi x4, x0, 16
     blt x20, x4, zone10  ## if y is above just paddle zone, ball at bottom right corner
     addi x4, x0, 52
     blt x20, x4, zone4  ## if y is between corners, ball against right wall not in corners
@@ -174,6 +174,10 @@
     jalr x0, 0(x1)
 
     zone7:
+    and x4, x25, x17              ## if ball and paddle are beside each other, AND will result in 1
+    beq x4, x0, endRound          ## therefore if paddle not below, we lose a life
+    addi x23, x0, 2               ## however if the paddle is below, we can bounce the ball
+    bne x4, x0, JMPNE
     jalr x0, 0(x1)
 
     zone5:
@@ -184,6 +188,10 @@
     jalr x0, 0(x1)
 
     zone10:
+    and x4, x25, x17              ## if ball and paddle are beside each other, AND will result in 1
+    beq x4, x0, endRound          ## therefore if paddle not below, we lose a life
+    addi x23, x0, 0               ## however if the paddle is below, we can bounce the ball
+    bne x4, x0, JMPNW
     jalr x0, 0(x1)
 
     zone4:
@@ -201,6 +209,22 @@
 
 
   ## ====== Functions for zones START ======
+  endRound:
+    addi x30, x30, -1
+    beq x30, x0, endGame
+    ## ball
+    addi x18, x0, 16    # CSBallXAdd (4:0)
+    addi x19, x0, 16    # NSBallXAdd (4:0)
+    addi x17, x0, 1
+    sll x17, x17, x19   ## putting ball back in middle using NSBallXAdd
+    addi x20, x0, 12    # CSBallYAdd (4:0)
+    addi x21, x0, 12    # NSBallYAdd (4:0)
+    addi x22, x0, 1     # CSBallDir  (2:0) N 
+    addi x23, x0, 1	  # NSBallDir  (2:0) N
+    # paddle
+    lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
+    jalr x0, 0(x1)
+
   updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
     addi x4, x0, 1
     beq x22, x4, JMPN   ## N=1
