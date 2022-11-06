@@ -210,7 +210,19 @@
 
   ## ====== Functions for zones START ======
   endRound:
-
+    addi x30, x30, -1
+    beq x30, x0, endGame
+    ## ball
+    addi x18, x0, 16    # CSBallXAdd (4:0)
+    addi x19, x0, 16    # NSBallXAdd (4:0)
+    addi x17, x0, 1
+    sll x17, x17, x19   ## putting ball back in middle using NSBallXAdd
+    addi x20, x0, 12    # CSBallYAdd (4:0)
+    addi x21, x0, 12    # NSBallYAdd (4:0)
+    addi x22, x0, 1     # CSBallDir  (2:0) N 
+    addi x23, x0, 1	  # NSBallDir  (2:0) N
+    # paddle
+    lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     jalr x0, 0(x1)
 
   updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
