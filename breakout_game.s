@@ -153,6 +153,7 @@
     jalr x0, 0(x1)
 
     zone6: #B Top not beside a side
+    addi x13, x16, 0
     addi x4, x0, 1
     beq x22, x4, JMPS   ## S=4 
     addi x4, x0, 0
@@ -248,7 +249,12 @@
 
     zone3:
     addi x4, x0, 3
-    bgt x22, x4, zone1 #Checking if the direction is south
+    bgt x22, x4, restoreW #Checking if the direction is south
+    addi x5, x0, 56
+    sw x0, 0(x5)
+    or x16, x16, x17
+    addi x5, x0, 60   ## using x5 as memory out
+    sw   x16, 0(x5)   ##x16 wall at top y address
     and x4, x16, x17
     bne x4, x0, ballHitWall
     addi x4, x0, 1
@@ -256,6 +262,10 @@
     beq x0, x22, checkIfWallLeft
     addi x4, x0, 2
     beq x4, x22, checkIfWallRight
+
+    restoreW:
+    addi x16, x13, 0
+    beq x0, x0, zone1
 
     ballHitWall:
     xor x16, x16, x17
@@ -281,6 +291,8 @@
     xor x16, x16, x17
     addi x29, x29, 1
     beq x0, x0, JMPSW
+
+  
 
     zone2:
     addi x4, x0, 1
@@ -497,7 +509,7 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) Ns
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
+    lui  x24, 0x00130   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
