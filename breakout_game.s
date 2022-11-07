@@ -112,7 +112,7 @@
 
   chkBallZone:
     addi x4, x0, 56
-    bgt x20, x4, zone6  ## if highest y address (y=15), ball in wall
+    bgt x20, x4, topzone  ## if highest y address (y=15), ball in wall
     addi x4, x0, 30
     bgt x18, x4, leftWall ## if highest x address (x=31), ball at left wall
     addi x4, x0, 1
@@ -121,7 +121,14 @@
     bgt x20, x4, zone3 ## if 2nd highest y address (y=14), ball just below wall
     addi x4, x0, 16
     blt x20, x4, zone2  ## if y below y=5, ball above paddle zone
-    addi x14, x0, 1  ## if nothing branches we are in centre
+    beq x0, x0, zone1
+
+    topzone: #B
+    addi x4, x0, 30
+    bgt x18, x4, zone11 ## if highest x address (x=31), ball at left wall
+    addi x4, x0, 1
+    blt x18, x4, zone12 ## if lowest x address (x=0), ball at right wall
+    beq x0, x0, zone6
 
     zone1:
     sw x1, 0(x2)  ## store return address (ra) on sp
@@ -131,17 +138,54 @@
     lw x1, 0(x2)  # load ra from stack
     jalr x0, 0(x1)  # return from this func using ra
 
-    zone6:
-    # wall code
+    zone11: #B Top left corner
+    addi x4, x0, 1
+    beq x22, x4, JMPS   ## S=4
+    addi x4, x0, 0
+    beq x22, x4, JMPSE  ## SW=5
     jalr x0, 0(x1)
+
+    zone12: #B Top right corner
+    addi x4, x0, 1
+    beq x22, x4, JMPS   ## S=4
+    addi x4, x0, 2
+    beq x22, x4, JMPSW  ## SW=5
+    jalr x0, 0(x1)
+
+    zone6: #B Top not beside a side
+    addi x4, x0, 1
+    beq x22, x4, JMPS   ## S=4 
+    addi x4, x0, 0
+    beq x22, x4, z6Lft   ## S=4 
+    addi x4, x0, 2
+    beq x22, x4, z6Rt   ## S=4    
+    jalr x0, 0(x1)
+
+    z6Lft: #B
+    slli x11, x17, 1 #shifting the ball left 1
+    and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
+    addi x4, x0, 0
+    beq x4, x12, JMPSE #no brick to left so can return a mirror bounce
+    xor x16, x16, x12 #Removing brick from wall
+    addi x29, x29, 1 
+    bez x0, x0, JMPSW
+
+    z6Rt: #B
+    srli x11, x17, 1 #shifting the ball right 1
+    and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
+    addi x4, x0, 0
+    beq x4, x12, JMPSW #no brick to left so can return a mirror bounce
+    xor x16, x16, x12 #Removing brick from wall
+    addi x29, x29, 1 
+    bez x0, x0, JMPSE
+
 
     leftWall:
     addi x4, x0, 16
     blt x20, x4, zone7  ## if y is just above paddle zone, ball at bottom left corner
     addi x4, x0, 52
     blt x20, x4, zone5  ## if y is between corners, ball against left wall not in corners
-    addi x14, x0, 8  ## ball in top left corner
-    # top left corner code
+    beq x0, x0, zone8 #B
     jalr x0, 0(x1)
 
     rightWall:
@@ -149,9 +193,59 @@
     blt x20, x4, zone10  ## if y is above just paddle zone, ball at bottom right corner
     addi x4, x0, 52
     blt x20, x4, zone4  ## if y is between corners, ball against right wall not in corners
-    addi x14, x0, 9  ## ball in top right corner
-    # top right corner code
+    beq x0, x0, zone9 #B
     jalr x0, 0(x1)
+
+    zone8: #B
+    addi x4, x0, 3
+    blt x22, x4, zone5 #Checking if the direction is south
+    and x11, x16,x17 # Checking if the ball is below a brick
+    addi x4, x0, 0
+    bne x4, x11, zone8Brick #there is a brick if this is equal
+    addi x4, x0, 1
+    beq x4, x17, JMPN #North and no brick, move north
+    srli x11, x7, 1 #Shifting the ball left one
+    and x12, x11, x16 # Anding the wall and shifted wall right one
+    addi x4, x0, 0
+    beq x12, x4, zone5 #if this is equal, no brick in way, normal wall movement move to zone 5
+    addi x29, x29, 1   ## increment score   
+    xor x12, x11, 16 #deleteing wall to temp
+    addi x16, x12, 0  # making temp the ball
+    beq x0, x0, JMPSE
+    jalr x0, 0(x1)
+
+    zone8Brick:#B
+    addi x29, x29, 1              ## increment score    
+    xor x16, x16, x17 #Removing brick from wall    
+    addi x4, x0, 1
+    beq x4, x17, JMPS
+    beq x0, x0, JMPSE
+
+    zone9: #B
+    addi x4, x0, 3
+    blt x22, x4, zone4 #Checking if the direction is south
+    and x11, x16,x17 # Checking if the ball is below a brick
+    addi x4, x0, 0
+    bne x4, x11, zone9Brick #there is a brick if this is equal
+    addi x4, x0, 1
+    beq x4, x17, JMPN #North and no brick, move north
+    slli x11, x7, 1 #Shifting the ball left one
+    and x12, x11, x16 # Anding the wall and shifted wall left ball vector
+    addi x4, x0, 0
+    beq x12, x4, zone4 #if this is equal, no brick in way, normal wall movement move to zone 5
+    addi x29, x29, 1   ## increment score   
+    xor x12, x11, 16 #deleteing wall to temp
+    addi x16, x12, 0  # making temp the ball
+    beq x0, x0, JMPSW
+    jalr x0, 0(x1)
+
+    zone9Brick:#B
+    addi x29, x29, 1 ## increment score    
+    xor x16, x16, x17 #Removing brick from wall    
+    addi x4, x0, 1
+    beq x4, x17, JMPS
+    beq x0, x0, JMPSW
+
 
     zone3:  # test code, change me
     and x31, x16, x17             ## AND ball and wall vector to see if the ball is against a wall piece
