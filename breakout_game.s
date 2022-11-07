@@ -246,8 +246,13 @@
     beq x4, x17, JMPS
     beq x0, x0, JMPSW
 
+    zone3:
+    and x4, x16, x17
+    bne x4, x0, ballHitWall
+    addi x4, x0, 1
+    beq x4, x22, JMPN
+    beq x0, x22, checkIfWallLeft
 
-    zone3:  # test code, change me
     and x31, x16, x17             ## AND ball and wall vector to see if the ball is against a wall piece
     bgt x31, x0, incrementScore   ## if AND resulted in 1, we can delete the wall piece and increment score
     #beq x31, x0, zone6
@@ -255,11 +260,6 @@
     addi x21, x20, -4
     addi x19, x18, 0
     jalr x0, 0(x1)
-
-    incrementScore:
-    xor x16, x16, x17             ## XOR ball and wall to remove wall piece since 1 and 1 -> 0 with XOR
-    addi x29, x29, 1              ## increment score
-    beq x0, x0, zone3
 
     zone2:
     addi x4, x0, 1
