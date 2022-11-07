@@ -252,9 +252,9 @@
     bgt x22, x4, restoreW #Checking if the direction is south
     addi x5, x0, 56
     sw x0, 0(x5)
-    or x16, x16, x17
+    or x4, x16, x17
     addi x5, x0, 60   ## using x5 as memory out
-    sw   x16, 0(x5)   ##x16 wall at top y address
+    sw   x4, 0(x5)   ##x16 wall at top y address
     and x4, x16, x17
     bne x4, x0, ballHitWall
     addi x4, x0, 1
