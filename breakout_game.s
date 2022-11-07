@@ -196,6 +196,7 @@
     beq x0, x0, zone9 #B
     jalr x0, 0(x1)
 
+<<<<<<< HEAD
     zone8: #B
     addi x4, x0, 3
     blt x22, x4, zone5 #Checking if the direction is south
@@ -246,6 +247,8 @@
     beq x4, x17, JMPS
     beq x0, x0, JMPSW
 
+=======
+>>>>>>> d64250f189e5be8ca71a33f63bb241eb68ddc4fc
     zone3:
     and x4, x16, x17
     bne x4, x0, ballHitWall
