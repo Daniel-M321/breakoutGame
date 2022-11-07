@@ -153,7 +153,13 @@
     # top right corner code
     jalr x0, 0(x1)
 
-    zone3:  # test code, change me
+    zone3:
+    and x4, x16, x17
+    bne x4, x0, ballHitWall
+    addi x4, x0, 1
+    beq x4, x22, JMPN
+    beq x0, x22, checkIfWallLeft
+
     and x31, x16, x17             ## AND ball and wall vector to see if the ball is against a wall piece
     bgt x31, x0, incrementScore   ## if AND resulted in 1, we can delete the wall piece and increment score
     #beq x31, x0, zone6
