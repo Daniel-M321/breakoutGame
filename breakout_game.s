@@ -198,7 +198,7 @@
 
     zone8: #B
     addi x4, x0, 3
-    blt x22, x4, zone5 #Checking if the direction is south
+    bgt x22, x4, zone5 #Checking if the direction is south
     and x11, x16,x17 # Checking if the ball is below a brick
     addi x4, x0, 0
     bne x4, x11, zone8Brick #there is a brick if this is equal
@@ -223,7 +223,7 @@
 
     zone9: #B
     addi x4, x0, 3
-    blt x22, x4, zone4 #Checking if the direction is south
+    bgt x22, x4, zone4 #Checking if the direction is south
     and x11, x16,x17 # Checking if the ball is below a brick
     addi x4, x0, 0
     bne x4, x11, zone9Brick #there is a brick if this is equal
@@ -248,7 +248,7 @@
 
     zone3:
     addi x4, x0, 3
-    blt x22, x4, zone1 #Checking if the direction is south
+    bgt x22, x4, zone1 #Checking if the direction is south
     and x4, x16, x17
     bne x4, x0, ballHitWall
     addi x4, x0, 1
@@ -495,7 +495,7 @@
     sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
     addi x20, x0, 12    # CSBallYAdd (4:0)
     addi x21, x0, 12    # NSBallYAdd (4:0)
-    addi x22, x0, 1     # CSBallDir  (2:0) N
+    addi x22, x0, 1     # CSBallDir  (2:0) Ns
     addi x23, x0, 1	    # NSBallDir  (2:0) N
     lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
   # Paddle
