@@ -121,7 +121,7 @@
     bgt x20, x4, zone3 ## if 2nd highest y address (y=14), ball just below wall
     addi x4, x0, 16
     blt x20, x4, zone2  ## if y below y=5, ball above paddle zone
-    beq x0, x0, zone1
+    beq x0, x0, updateBallLocationLinear
 
     topzone: #B
     addi x4, x0, 30
@@ -129,14 +129,6 @@
     addi x4, x0, 1
     blt x18, x4, zone12 ## if lowest x address (x=0), ball at right wall
     beq x0, x0, zone6
-
-    zone1:
-    sw x1, 0(x2)  ## store return address (ra) on sp
-    addi x2, x2, 4  ## increment sp
-    jal x1, updateBallLocationLinear ## nested call
-    addi x2, x2, -4  # decrement sp by 4
-    lw x1, 0(x2)  # load ra from stack
-    jalr x0, 0(x1)  # return from this func using ra
 
     zone11: #B Top left corner
     addi x4, x0, 1
@@ -153,31 +145,29 @@
     jalr x0, 0(x1)
 
     zone6: #B Top not beside a side
+    addi x16, x13, 0
     addi x4, x0, 1
-    beq x22, x4, JMPS   ## S=4 
-    addi x4, x0, 0
-    beq x22, x4, z6Lft   ## S=4 
+    beq x22, x4, JMPS   ## N=1 
+    beq x22, x0, z6Lft   ## NW=0 
     addi x4, x0, 2
-    beq x22, x4, z6Rt   ## S=4    
+    beq x22, x4, z6Rt   ## NE=2    
     jalr x0, 0(x1)
 
     z6Lft: #B
     slli x11, x17, 1 #shifting the ball left 1
     and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
-    addi x4, x0, 0
-    beq x4, x12, JMPSE #no brick to left so can return a mirror bounce
+    beq x0, x12, JMPSW #no brick to left so can return a mirror bounce
     xor x16, x16, x12 #Removing brick from wall
     addi x29, x29, 1 
-    beq x0, x0, JMPSW
+    beq x0, x0, JMPSE
 
     z6Rt: #B
     srli x11, x17, 1 #shifting the ball right 1
     and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
-    addi x4, x0, 0
-    beq x4, x12, JMPSW #no brick to left so can return a mirror bounce
+    beq x0, x12, JMPSE #no brick to right so can return a mirror bounce
     xor x16, x16, x12 #Removing brick from wall
     addi x29, x29, 1 
-    beq x0, x0, JMPSE
+    beq x0, x0, JMPSW
 
 
     leftWall:
@@ -195,6 +185,7 @@
     blt x20, x4, zone4  ## if y is between corners, ball against right wall not in corners
     beq x0, x0, zone9 #B
     jalr x0, 0(x1)
+    
 
     zone8: #B
     addi x4, x0, 3
@@ -221,6 +212,7 @@
     beq x4, x17, JMPS
     beq x0, x0, JMPSE
 
+
     zone9: #B
     addi x4, x0, 3
     bgt x22, x4, zone4 #Checking if the direction is south
@@ -246,42 +238,50 @@
     beq x4, x17, JMPS
     beq x0, x0, JMPSW
 
+
     zone3:
-    addi x4, x0, 3
-    bgt x22, x4, zone1 #Checking if the direction is south
+    addi x4, x0, 2
+    bgt x22, x4, updateBallLocationLinear ## Checking if the direction is south
+    addi x13, x16, 0                ## stores wall without ball vector for restoring later
     and x4, x16, x17
-    bne x4, x0, ballHitWall
-    addi x4, x0, 1
-    beq x4, x22, JMPN
-    beq x0, x22, checkIfWallLeft
+    bne x4, x0, ballHitWall         ## if ball and wall brick beside each other going north, ball has hit wall
+    beq x0, x22, checkIfWallLeft    ## if no brick above us and we are not going directly north, we check the bricks beside us
     addi x4, x0, 2
     beq x4, x22, checkIfWallRight
+    or x16, x16, x17                ## if not going south or NW or NE and there is no wall brick, we are going north into the wall vector
+    beq x0, x0, JMPN
 
     ballHitWall:
-    xor x16, x16, x17
-    addi x29, x29, 1
-    beq x0, x22, JMPSW
-    addi x4, x0, 1
-    beq x4, x22, JMPS
-    addi x4, x0, 2
+    xor x16, x16, x17               ## XOR results in brick missing where ball was
+    addi x29, x29, 1                ## update score
+    beq x0, x22, JMPSW              ## NW=0
+    addi x4, x0, 1                  ## N=1
+    beq x4, x22, JMPS         
+    addi x4, x0, 2                  ## NE=2
     beq x4, x22, JMPSE
 
     checkIfWallLeft:
-    slli x31, x17, 1
+    slli x31, x17, 1                ## shift ball left to AND against wall
     and x4, x31, x16
-    beq x0, x4, JMPNW
-    xor x16, x16, x17
-    addi x29, x29, 1
-    beq x0, x0, JMPSE
+    bne x0, x4, scoreDiag               ## if AND postive, ball is heading towards brick
+    or x16, x31, x16                ## if AND negative, OR the shifted ball with the wall to put the ball in the wall vector.
+    beq x0, x0, JMPNW               ## Since left we go NW
 
-    checkIfWallRight:
+    checkIfWallRight:               ## same as above but going right
     srli x31, x17, 1
     and x4, x31, x16
-    beq x0, x4, JMPNE
-    xor x16, x16, x17
-    addi x29, x29, 1
-    beq x0, x0, JMPSW
+    bne x0, x4, scoreDiag
+    or x16, x31, x16
+    beq x0, x0, JMPNE
 
+    scoreDiag:
+    xor x16, x16, x31               ## XOR ball and wall to delete brick where previously shifted ball is
+    addi x29, x29, 1
+    addi x4, x0, 2                  ## NW=2
+    beq x4, x22, JMPSW              ## we mirror back if hitting brick at corner
+    beq x0, x22, JMPSE
+
+  
     zone2:
     addi x4, x0, 1
     beq x22, x4, JMPN
@@ -315,6 +315,7 @@
     beq x22, x4, JMPN
     blt x22, x4, JMPNE
     jalr x0, 0(x1)
+
 
     zone7:
     and x4, x25, x17              ## if ball and paddle are beside each other, AND will result in 1
@@ -497,7 +498,7 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) Ns
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
+    lui  x24, 0x00130   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
