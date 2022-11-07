@@ -167,10 +167,38 @@
     addi x29, x29, 1              ## increment score
     beq x0, x0, zone3
 
-    zone2:  # test code, change me
-    addi x23, x0, 1
-    addi x21, x20, 4
-    addi x19, x18, 0
+    zone2:
+    addi x4, x0, 1
+    beq x22, x4, JMPN
+    and x4, x17, x25            ## AND ball and wall to see if they're beside each other
+    beq x4, x0, endRound        ## if AND 0, paddle cannot bounce ball and we lose life
+    slli x31, x17, 1            ## We check if ball is on left edge of paddle, by shifting the ball left and AND it again.
+    and x4, x25, x31
+    beq x4, x0, hitLeftPaddle   ## if AND 0, ball was on left edge 
+    srli x31, x17, 1            ## we do same check for right check 
+    and x4, x25, x31
+    beq x4, x0, hitRightPaddle
+    beq x0, x0, hitMiddlePaddle ## if left and right checks fail, ball at centre of paddle
+
+    hitMiddlePaddle:            ## SEE fearghals rebound strategy
+    addi x4, x0, 5
+    beq x22, x4, JMPNW
+    addi x4, x0, 4
+    beq x22, x4, JMPN
+    addi x4, x0, 3
+    beq x22, x4, JMPNE
+    jalr x0, 0(x1)
+
+    hitLeftPaddle:
+    addi x4, x0, 3
+    beq x22, x4, JMPN
+    bgt x22, x4, JMPNW
+    jalr x0, 0(x1)
+
+    hitRightPaddle:
+    addi x4, x0, 5
+    beq x22, x4, JMPN
+    blt x22, x4, JMPNE
     jalr x0, 0(x1)
 
     zone7:
@@ -219,7 +247,7 @@
     sll x17, x17, x19   ## putting ball back in middle using NSBallXAdd
     addi x20, x0, 12    ## CSBallYAdd (4:0)
     addi x21, x0, 12    ## NSBallYAdd (4:0)
-    addi x22, x0, 1     ## CSBallDir  (2:0) N 
+    addi x22, x0, 1     ## CSBallDir  (2:0) N
     addi x23, x0, 1	    ## NSBallDir  (2:0) N
     # paddle
     lui  x25, 0x0007c   ## paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
@@ -352,7 +380,7 @@
     sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
     addi x20, x0, 12    # CSBallYAdd (4:0)
     addi x21, x0, 12    # NSBallYAdd (4:0)
-    addi x22, x0, 1     # CSBallDir  (2:0) N 
+    addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
     lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
   # Paddle
