@@ -168,7 +168,7 @@
     beq x4, x12, JMPSE #no brick to left so can return a mirror bounce
     xor x16, x16, x12 #Removing brick from wall
     addi x29, x29, 1 
-    bez x0, x0, JMPSW
+    beq x0, x0, JMPSW
 
     z6Rt: #B
     srli x11, x17, 1 #shifting the ball right 1
@@ -177,7 +177,7 @@
     beq x4, x12, JMPSW #no brick to left so can return a mirror bounce
     xor x16, x16, x12 #Removing brick from wall
     addi x29, x29, 1 
-    bez x0, x0, JMPSE
+    beq x0, x0, JMPSE
 
 
     leftWall:
@@ -196,7 +196,6 @@
     beq x0, x0, zone9 #B
     jalr x0, 0(x1)
 
-<<<<<<< HEAD
     zone8: #B
     addi x4, x0, 3
     blt x22, x4, zone5 #Checking if the direction is south
@@ -210,7 +209,7 @@
     addi x4, x0, 0
     beq x12, x4, zone5 #if this is equal, no brick in way, normal wall movement move to zone 5
     addi x29, x29, 1   ## increment score   
-    xor x12, x11, 16 #deleteing wall to temp
+    xor x12, x11, x16 #deleteing wall to temp
     addi x16, x12, 0  # making temp the ball
     beq x0, x0, JMPSE
     jalr x0, 0(x1)
@@ -235,7 +234,7 @@
     addi x4, x0, 0
     beq x12, x4, zone4 #if this is equal, no brick in way, normal wall movement move to zone 5
     addi x29, x29, 1   ## increment score   
-    xor x12, x11, 16 #deleteing wall to temp
+    xor x12, x11, x16 #deleteing wall to temp
     addi x16, x12, 0  # making temp the ball
     beq x0, x0, JMPSW
     jalr x0, 0(x1)
@@ -247,22 +246,41 @@
     beq x4, x17, JMPS
     beq x0, x0, JMPSW
 
-=======
->>>>>>> d64250f189e5be8ca71a33f63bb241eb68ddc4fc
     zone3:
+    addi x4, x0, 3
+    blt x22, x4, zone1 #Checking if the direction is south
     and x4, x16, x17
     bne x4, x0, ballHitWall
     addi x4, x0, 1
     beq x4, x22, JMPN
     beq x0, x22, checkIfWallLeft
+    addi x4, x0, 2
+    beq x4, x22, checkIfWallRight
 
-    and x31, x16, x17             ## AND ball and wall vector to see if the ball is against a wall piece
-    bgt x31, x0, incrementScore   ## if AND resulted in 1, we can delete the wall piece and increment score
-    #beq x31, x0, zone6
-    addi x23, x0, 4
-    addi x21, x20, -4
-    addi x19, x18, 0
-    jalr x0, 0(x1)
+    ballHitWall:
+    xor x16, x16, x17
+    addi x29, x29, 1
+    beq x0, x22, JMPSW
+    addi x4, x0, 1
+    beq x4, x22, JMPS
+    addi x4, x0, 2
+    beq x4, x22, JMPSE
+
+    checkIfWallLeft:
+    slli x31, x17, 1
+    and x4, x31, x16
+    beq x0, x4, JMPNW
+    xor x16, x16, x17
+    addi x29, x29, 1
+    beq x0, x0, JMPSE
+
+    checkIfWallRight:
+    srli x31, x17, 1
+    and x4, x31, x16
+    beq x0, x4, JMPNE
+    xor x16, x16, x17
+    addi x29, x29, 1
+    beq x0, x0, JMPSW
 
     zone2:
     addi x4, x0, 1
