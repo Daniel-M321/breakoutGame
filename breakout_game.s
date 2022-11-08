@@ -540,7 +540,8 @@
                                     # one clock delay required in memory peripheral to register change in switch state
   lui  x4, 0x00030                 # 0x00030000 
   addi x4, x4, 8                   # 0x00030008 IOIn(31:0) address 
-  addi x8, x0, 4                   # IOIn(2) = 1 compare value  
+  addi x8, x0, 4                   # IOIn(2) = 1 compare value
+  addi x31, x0, 3                  # IOIn(1) = LR compare
 
   waitUntilIOIn2Eq0: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
@@ -558,7 +559,12 @@
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
     andi x7, x3, 4                  # mask to keep IOIn(2) 
     beq  x7, x0, ret_waitForGameGo  # chk / progress if IOIn(2) = 0
+
+    beq x4, x31, fModeSetup
+
     beq  x0, x0, waitUntilIOIn2Eq0b # unconditional loop (else keep checking)
+
+  fmodeSetup: # change me (worry about actual setup runnning)
 
   ret_waitForGameGo:
     jalr x0, 0(x1)                  # ret
