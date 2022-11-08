@@ -12,9 +12,9 @@
   # x8 paddleNumDlyCounter
   # x9 ballNumDlyCounter
   # x10 arena XY variable
-  # x11 Not used
-  # x12 Not used 
-  # x13 Not used
+  # x11 program variable
+  # x12 program variable 
+  # x13 stores orginal wall if ball enters it
   # x14 zone
   # x15 dlyCountMax. 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
 
@@ -37,16 +37,17 @@
   # Score and Lives 
   #  x29 Score
   #  x30 Lives
-  # x31  Not used
+  # x31  program variable
   # ====== Register allocation END ======
 
   main:
-    #jal x1, clearArena 
-    #jal x1, waitForGameGo    # wait for IOIn(2) input to toggle 0-1-0
+    jal x1, clearArena 
+    jal x1, startScreen
+    jal x1, waitForGameGo    # wait for IOIn(2) input to toggle 0-1-0
+    jal x1, clearArena 
     
     addi x2, x0, 0x6c  ## init stack pointer (sp). Game uses 16x32-bit memory locations (low 64 bytes addresses), we can use 0x40 and above
     addi x2, x2, -16   ## reserves 4x32 bit words
-
     jal x1, setupDefaultArena # initialise arena values 
     #jal x1, setupArena1       
     
@@ -516,15 +517,19 @@
 
 
   clearArena: 
-                        # initialise registers 
+                        # initialise registers
+    addi x11, x0, 0     ## various program variables used through the program
+    addi x12, x0, 0 
+    addi x31, x0, 0 
+    addi x5, x0, 0  
     addi x5, x0, 0      # base memory address
     addi x4, x0, 0      # loop counter
     addi x7, x0, 15     # max count value
     clearMemLoop:
       sw x0, 0(x5)      # clear memory word
-    addi x5, x5, 4    # increment memory byte address
-    addi x4, x4, 1    # increment loop counter 	
-    ble  x4, x7, clearMemLoop  
+      addi x5, x5, 4    # increment memory byte address
+      addi x4, x4, 1    # increment loop counter 	
+      ble  x4, x7, clearMemLoop  
     jalr x0, 0(x1)    # ret
 
   # ====== Setup arena variables END ======
@@ -569,8 +574,88 @@
     jalr x0, 0(x1)                  # ret
 
 
+  startScreen:
+    addi x31, x0, 52     #1
+    lui x12, 0x49723
+    addi x12, x12, 0x76e
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0xaaa54
+    addi x12, x12, 0x254
+    sw x12, 0(x31)
+    addi x31, x0, 44     #3
+    lui x12, 0xaaa53
+    addi x12, x12, 0x264
+    sw x12, 0(x31)
+    addi x31, x0, 40     #4
+    lui x12, 0x49227
+    addi x12, x12, 0x254
+    sw x12, 0(x31)
+    addi x31, x0, 32     #5
+    lui x12, 0x47404
+    addi x12, x12, 0x940
+    sw x12, 0(x31)
+    addi x31, x0, 28     #6
+    lui x12, 0x4547a
+    addi x12, x12, 0x2a0
+    sw x12, 0(x31)
+    addi x31, x0, 24     #7
+    lui x12, 0x46404
+    addi x12, x12, 0xaa0
+    sw x12, 0(x31)
+    addi x31, x0, 20     #8
+    lui x12, 0x7577a
+    addi x12, x12, 0x2a8
+    sw x12, 0(x31)
+    jalr x0, 0(x1)
+
+  endScreen:
+    addi x31, x0, 52     #1
+    lui x12, 0x0e111
+    addi x12, x12, 0x780
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0x1029b
+    addi x12, x12, 0x400
+    sw x12, 0(x31)
+    addi x31, x0, 44     #3
+    lui x12, 0x277d5
+    addi x12, x12, 0x700
+    sw x12, 0(x31)
+    addi x31, x0, 40     #4
+    lui x12, 0x12451
+    addi x12, x12, 0x400
+    sw x12, 0(x31)
+    addi x31, x0, 36     #5
+    lui x12, 0x0c451
+    addi x12, x12, 0x780
+    sw x12, 0(x31)
+    addi x31, x0, 28     #6
+    lui x12, 0x1c82f
+    addi x12, x12, 0x710
+    sw x12, 0(x31)
+    addi x31, x0, 24     #7
+    lui x12, 0x22448
+    addi x12, x12, 0x490
+    sw x12, 0(x31)
+    addi x31, x0, 20     #8
+    lui x12, 0x2228e
+    addi x12, x12, 0x710
+    sw x12, 0(x31)
+    addi x31, x0, 16     #9
+    lui x12, 0x22288
+    addi x12, x12, 0x480
+    sw x12, 0(x31)
+    addi x31, x0, 12     #10
+    lui x12, 0x1C10F
+    addi x12, x12, 0x490
+    sw x12, 0(x31)
+    jalr x0, 0(x1)
+
+    # 00011100000100001111010010010000 1C10F490
 
   endGame:                          # highlight game over in display 
+
     jalr x0, 0(x1)                  # ret
     
   # ====== Other functions END ======
