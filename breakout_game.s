@@ -112,7 +112,7 @@
 
   chkBallZone:
     addi x4, x0, 56
-    bgt x20, x4, topzone  ## if highest y address (y=15), ball in wall
+    bgt x20, x4, zone6  ## if highest y address (y=15), ball in wall
     addi x4, x0, 30
     bgt x18, x4, leftWall ## if highest x address (x=31), ball at left wall
     addi x4, x0, 1
@@ -123,15 +123,12 @@
     blt x20, x4, zone2  ## if y below y=5, ball above paddle zone
     beq x0, x0, updateBallLocationLinear
 
-    topzone: #B
+    zone6: #B 
+    addi x16, x13, 0
     addi x4, x0, 30
     bgt x18, x4, JMPSE ## if highest x address (x=31), ball in left corner
     addi x4, x0, 1
     blt x18, x4, JMPSW ## if lowest x address (x=0), ball in right corner
-    beq x0, x0, zone6
-
-    zone6: #B Top not beside a side
-    addi x16, x13, 0
     addi x4, x0, 1
     beq x22, x4, JMPS   ## N=1 
     beq x22, x0, z6Lft   ## NW=0 
@@ -142,16 +139,16 @@
     z6Lft: #B
     slli x11, x17, 1 #shifting the ball left 1
     and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
-    beq x0, x12, JMPSW #no brick to left so can return a mirror bounce
-    xor x16, x16, x12 #Removing brick from wall
+    beq x0, x12, JMPSW #no brick to left so can bounce off top wall
+    xor x16, x16, x12 #Removing brick from wall and mirror bounce
     addi x29, x29, 1 
     beq x0, x0, JMPSE
 
     z6Rt: #B
     srli x11, x17, 1 #shifting the ball right 1
     and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
-    beq x0, x12, JMPSE #no brick to right so can return a mirror bounce
-    xor x16, x16, x12 #Removing brick from wall
+    beq x0, x12, JMPSE #no brick to right so can bounce of top wall
+    xor x16, x16, x12 #Removing brick from wall and mirror bounce
     addi x29, x29, 1 
     beq x0, x0, JMPSW
 
