@@ -46,7 +46,7 @@
     
     addi x2, x0, 0x6c  ## init stack pointer (sp). Game uses 16x32-bit memory locations (low 64 bytes addresses), we can use 0x40 and above
     addi x2, x2, -16   ## reserves 4x32 bit words
-
+    jal x1, startScreen
     jal x1, setupDefaultArena # initialise arena values 
     #jal x1, setupArena1       
     
@@ -568,6 +568,41 @@
   ret_waitForGameGo:
     jalr x0, 0(x1)                  # ret
 
+
+  startScreen:
+    addi x31, x0, 52     #1
+    lui x12, 0x49723
+    addi x12, x12, 0x76e
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0x55254
+    addi x12, x12, 0x254
+    sw x12, 0(x31)
+    addi x31, x0, 44     #3
+    lui x12, 0x55253
+    addi x12, x12, 0x264
+    sw x12, 0(x31)
+    addi x31, x0, 40     #4
+    lui x12, 0x49227
+    addi x12, x12, 0x254
+    sw x12, 0(x31)
+    addi x31, x0, 32     #5
+    lui x12, 0x8e803      ## check
+    addi x12, x12, 0x940
+    sw x12, 0(x31)
+    addi x31, x0, 28     #6
+    lui x12, 0x4547a
+    addi x12, x12, 0x2a0
+    sw x12, 0(x31)
+    addi x31, x0, 24     #7
+    lui x12, 0x8c803      ## check
+    addi x12, x12, 0xaa0
+    sw x12, 0(x31)
+    addi x31, x0, 20     #8
+    lui x12, 0x7577a
+    addi x12, x12, 0x2a8
+    sw x12, 0(x31)
+    jalr x0, 0(x1)
 
 
   endGame:                          # highlight game over in display 
