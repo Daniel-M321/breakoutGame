@@ -125,24 +125,10 @@
 
     topzone: #B
     addi x4, x0, 30
-    bgt x18, x4, zone11 ## if highest x address (x=31), ball at left wall
+    bgt x18, x4, JMPSE ## if highest x address (x=31), ball in left corner
     addi x4, x0, 1
-    blt x18, x4, zone12 ## if lowest x address (x=0), ball at right wall
+    blt x18, x4, JMPSW ## if lowest x address (x=0), ball in right corner
     beq x0, x0, zone6
-
-    zone11: #B Top left corner
-    addi x4, x0, 1
-    beq x22, x4, JMPS   ## S=4
-    addi x4, x0, 0
-    beq x22, x4, JMPSE  ## SW=5
-    jalr x0, 0(x1)
-
-    zone12: #B Top right corner
-    addi x4, x0, 1
-    beq x22, x4, JMPS   ## S=4
-    addi x4, x0, 2
-    beq x22, x4, JMPSW  ## SW=5
-    jalr x0, 0(x1)
 
     zone6: #B Top not beside a side
     addi x16, x13, 0
@@ -188,55 +174,49 @@
     
 
     zone8: #B
-    addi x4, x0, 3
-    bgt x22, x4, zone5 #Checking if the direction is south
-    and x11, x16,x17 # Checking if the ball is below a brick
-    addi x4, x0, 0
-    bne x4, x11, zone8Brick #there is a brick if this is equal
-    addi x4, x0, 1
-    beq x4, x17, JMPN #North and no brick, move north
-    srli x11, x7, 1 #Shifting the ball left one
+    addi x4, x0, 2
+    bgt x22, x4, JMPSE #Checking if the direction is south
+    and x11, x16, x17 # Checking if the ball is below a brick
+    bne x0, x11, zone8Brick #there is a brick if this is equal
+    srli x11, x17, 1 #Shifting the ball right one
     and x12, x11, x16 # Anding the wall and shifted wall right one
-    addi x4, x0, 0
-    beq x12, x4, zone5 #if this is equal, no brick in way, normal wall movement move to zone 5
+    addi x13, x16, 0                ## stores wall without ball vector for restoring later
+    beq x12, x0, putBallInWallL #if this is equal, no brick in way, put ball in wall
     addi x29, x29, 1   ## increment score   
-    xor x12, x11, x16 #deleteing wall to temp
-    addi x16, x12, 0  # making temp the ball
+    xor x16, x11, x16 #deleteing wall to temp
     beq x0, x0, JMPSE
-    jalr x0, 0(x1)
 
     zone8Brick:#B
     addi x29, x29, 1              ## increment score    
     xor x16, x16, x17 #Removing brick from wall    
-    addi x4, x0, 1
-    beq x4, x17, JMPS
     beq x0, x0, JMPSE
+
+    putBallInWallL:
+    or x16, x16, x11
+    beq x0, x0, JMPNE 
 
 
     zone9: #B
-    addi x4, x0, 3
-    bgt x22, x4, zone4 #Checking if the direction is south
-    and x11, x16,x17 # Checking if the ball is below a brick
-    addi x4, x0, 0
-    bne x4, x11, zone9Brick #there is a brick if this is equal
-    addi x4, x0, 1
-    beq x4, x17, JMPN #North and no brick, move north
-    slli x11, x7, 1 #Shifting the ball left one
+    addi x4, x0, 2
+    bgt x22, x4, JMPSW #Checking if the direction is south
+    and x11, x16, x17 # Checking if the ball is below a brick
+    bne x0, x11, zone9Brick #there is a brick if this is equal
+    slli x11, x17, 1 #Shifting the ball left one
     and x12, x11, x16 # Anding the wall and shifted wall left ball vector
-    addi x4, x0, 0
-    beq x12, x4, zone4 #if this is equal, no brick in way, normal wall movement move to zone 5
+    addi x13, x16, 0                ## stores wall without ball vector for restoring later
+    beq x12, x0, putBallInWallR #if this is equal, no brick in way, we put ball in wall
     addi x29, x29, 1   ## increment score   
-    xor x12, x11, x16 #deleteing wall to temp
-    addi x16, x12, 0  # making temp the ball
+    xor x16, x12, x16 #deleting wall to temp
     beq x0, x0, JMPSW
-    jalr x0, 0(x1)
 
     zone9Brick:#B
     addi x29, x29, 1 ## increment score    
     xor x16, x16, x17 #Removing brick from wall    
-    addi x4, x0, 1
-    beq x4, x17, JMPS
     beq x0, x0, JMPSW
+
+    putBallInWallR:
+    or x16, x16, x11      ## putting shifted ball in wall
+    beq x0, x0, JMPNW     ## going into wall zone
 
 
     zone3:
@@ -496,7 +476,7 @@
     sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
     addi x20, x0, 12    # CSBallYAdd (4:0)
     addi x21, x0, 12    # NSBallYAdd (4:0)
-    addi x22, x0, 1     # CSBallDir  (2:0) Ns
+    addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
     lui  x24, 0x00130   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
   # Paddle
