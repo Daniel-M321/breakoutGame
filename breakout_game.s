@@ -42,7 +42,7 @@
 
   main:
     jal x1, clearArena 
-    jal x1, endScreen
+    jal x1, startScreen
     jal x1, waitForGameGo    # wait for IOIn(2) input to toggle 0-1-0
     jal x1, clearArena 
     
@@ -655,7 +655,7 @@
     # 00011100000100001111010010010000 1C10F490
 
   endGame:                          # highlight game over in display 
-    
+
     jalr x0, 0(x1)                  # ret
     
   # ====== Other functions END ======
