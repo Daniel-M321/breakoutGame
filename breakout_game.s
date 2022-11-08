@@ -53,7 +53,6 @@
     
     jal x1, updateWallMem
     sw   x17, 0(x21)          ## storing init ball vector in NSBallYAdd
-    #jal x1, updateBallMem
     jal x1, updatePaddleMem
     jal x1, UpdateScoreMem
     jal x1, UpdateLivesMem
@@ -105,10 +104,6 @@
     add x20, x0, x21     ## CSBallYAdd = NSBallYAdd
     add x22, x0, x23     ## ballCSDir = ballNSDir
     jalr x0, 0(x1)       # ret
-
-
-  ##ret_updateBallMem:
-    ##jalr x0, 0(x1)          # ret
 
 
   chkBallZone:
@@ -323,11 +318,6 @@
     beq x22, x4, JMPSW            ## if CSdir = SE -> NSdir = SW
     beq x0, x0, updateBallLocationLinear  ## ball will go either N or S linearly
     jalr x0, 0(x1)
-
-
-  ret_chkBallZone:
-    jalr x0, 0(x1)          # ret
-  # ====== Ball functions END ======
 
 
   ## ====== Functions for zones START ======
@@ -654,8 +644,15 @@
 
     # 00011100000100001111010010010000 1C10F490
 
-  endGame:                          # highlight game over in display 
-
-    jalr x0, 0(x1)                  # ret
+  endGame:                # highlight game over in display 
+    lui  x15, 0x98968     # 0x98968000 
+    srli x15, x15, 12     # 0x00098968  
+    jal x1, clearArena                
+    displayloop:          ## loops and flickers GAME OVER message to user
+      jal x1, endScreen
+      jal x1, delay
+      jal x1, clearArena
+      jal x1, delay
+    beq x0, x0, displayloop   ## loop until reset
     
   # ====== Other functions END ======
