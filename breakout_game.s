@@ -42,7 +42,7 @@
 
   main:
     jal x1, clearArena 
-    jal x1, startScreen
+    jal x1, endScreen
     jal x1, waitForGameGo    # wait for IOIn(2) input to toggle 0-1-0
     jal x1, clearArena 
     
@@ -580,11 +580,11 @@
     addi x12, x12, 0x76e
     sw x12, 0(x31)
     addi x31, x0, 48     #2
-    lui x12, 0x55254
+    lui x12, 0xaaa54
     addi x12, x12, 0x254
     sw x12, 0(x31)
     addi x31, x0, 44     #3
-    lui x12, 0x55253
+    lui x12, 0xaaa53
     addi x12, x12, 0x264
     sw x12, 0(x31)
     addi x31, x0, 40     #4
@@ -609,8 +609,53 @@
     sw x12, 0(x31)
     jalr x0, 0(x1)
 
+  endScreen:
+    addi x31, x0, 52     #1
+    lui x12, 0x0e111
+    addi x12, x12, 0x780
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0x1029b
+    addi x12, x12, 0x400
+    sw x12, 0(x31)
+    addi x31, x0, 44     #3
+    lui x12, 0x277d5
+    addi x12, x12, 0x700
+    sw x12, 0(x31)
+    addi x31, x0, 40     #4
+    lui x12, 0x12451
+    addi x12, x12, 0x400
+    sw x12, 0(x31)
+    addi x31, x0, 36     #5
+    lui x12, 0x0c451
+    addi x12, x12, 0x780
+    sw x12, 0(x31)
+    addi x31, x0, 28     #6
+    lui x12, 0x1c82f
+    addi x12, x12, 0x710
+    sw x12, 0(x31)
+    addi x31, x0, 24     #7
+    lui x12, 0x22448
+    addi x12, x12, 0x490
+    sw x12, 0(x31)
+    addi x31, x0, 20     #8
+    lui x12, 0x2228e
+    addi x12, x12, 0x710
+    sw x12, 0(x31)
+    addi x31, x0, 16     #9
+    lui x12, 0x22288
+    addi x12, x12, 0x480
+    sw x12, 0(x31)
+    addi x31, x0, 12     #10
+    lui x12, 0x1C10F
+    addi x12, x12, 0x490
+    sw x12, 0(x31)
+    jalr x0, 0(x1)
+
+    # 00011100000100001111010010010000 1C10F490
 
   endGame:                          # highlight game over in display 
+    
     jalr x0, 0(x1)                  # ret
     
   # ====== Other functions END ======
