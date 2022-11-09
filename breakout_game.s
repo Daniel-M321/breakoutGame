@@ -480,7 +480,7 @@
   beq x0, x0, ret_setUpArena       # ret
 
 
-  setupArenaFMode:
+  setupArenaFMode:      ## BALL DELAY HALVED IN FMODE
   # dlyCountMax 
               # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
     lui  x15, 0x98968   # 0x98968000 
@@ -498,14 +498,14 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
+    lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## double ball speed to default
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 2     # paddleXAddLSB
     lui  x28, 0x00098   # paddleNumDlyCounter 
   # Score
-    addi x29, x0, 63     # score
+    addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
   beq x0, x0, ret_setUpArena       # ret
 
