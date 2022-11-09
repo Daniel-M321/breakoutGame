@@ -324,6 +324,7 @@
   endRound:
     addi x30, x30, -1   ## decrementing a life 
     beq x30, x0, endGame
+
     # ball
     addi x18, x0, 16    ## CSBallXAdd (4:0)
     addi x19, x0, 16    ## NSBallXAdd (4:0)
@@ -641,6 +642,56 @@
     addi x12, x12, 0x490
     sw x12, 0(x31)
     jalr x0, 0(x1)
+
+  SmileyFace:
+    addi x31, x0, 52     #1
+    lui x12, 0x03030
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0x03030
+    addi x12, x12, 0x400
+    sw x12, 0(x31)
+    addi x31, x0, 36     #5
+    lui x12, 0x00300
+    sw x12, 0(x31)
+    addi x31, x0, 20     #8
+    lui x12, 0x01860
+    sw x12, 0(x31)
+    addi x31, x0, 16     #9
+    lui x12, 0x00FC0
+    sw x12, 0(x31)
+
+  SadFace:
+    addi x31, x0, 52     #1
+    lui x12, 0x03030
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0x03030
+    sw x12, 0(x31)
+    addi x31, x0, 36     #5
+    lui x12, 0x00300
+    sw x12, 0(x31)
+    addi x31, x0, 20     #8
+    lui x12, 0x00FC0
+    sw x12, 0(x31)
+    addi x31, x0, 16     #9
+    lui x12, 0x01860
+    sw x12, 0(x31)
+    addi x31, x0, 52     #1
+    lui x12, 0x00000
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0x00000
+    sw x12, 0(x31)
+    addi x31, x0, 36     #5
+    lui x12, 0x000000
+    sw x12, 0(x31)
+    addi x31, x0, 20     #8
+    lui x12, 0x00000
+    sw x12, 0(x31)
+    addi x31, x0, 16     #9
+    lui x12, 0x00000
+    sw x12, 0(x31)
 
     # 00011100000100001111010010010000 1C10F490
 
