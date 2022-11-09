@@ -505,7 +505,7 @@
     addi x27, x0, 2     # paddleXAddLSB
     lui  x28, 0x00098   # paddleNumDlyCounter 
   # Score
-    addi x29, x0, 31     # score
+    addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
   beq x0, x0, ret_setUpArena       # ret
 
