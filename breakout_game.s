@@ -73,9 +73,9 @@
       jal x1, UpdateScoreMem
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
-      addi x11, x0, 16
-      beq x29, x11, resetWall
       addi x11, x0, 32
+      beq x29, x11, resetWall
+      addi x11, x0, 64
       beq x29, x11, resetWall
       jal x0, loop1
     
@@ -505,7 +505,7 @@
     addi x27, x0, 2     # paddleXAddLSB
     lui  x28, 0x00098   # paddleNumDlyCounter 
   # Score
-    addi x29, x0, 0     # score
+    addi x29, x0, 63     # score
     addi x30, x0, 3     # lives 
   beq x0, x0, ret_setUpArena       # ret
 
@@ -572,8 +572,6 @@
 
   resetWall:
     xori x16, x0, -1    # wall x16 = 0xffffffff
-    # beq x0, x0, SmileyFace
-    # beq x0, x0, updateWallMem
 
   SmileyFace:
     addi x31, x0, 52     #1
@@ -591,6 +589,7 @@
     addi x31, x0, 16     #5
     lui x12, 0x00FC0
     sw x12, 0(x31)
+    addi x11, x0, 64
     beq x11, x29, endGame
     jal x1, loop1
     
@@ -728,8 +727,10 @@
 
     # 00011100000100001111010010010000 1C10F490
 
-  endGame:                # highlight game over in display 
+  endGame:                # highlight game over in display
+    bne x11, x29, noJMP2Delay  
     jal x1, delay
+    noJMP2Delay:
     lui  x15, 0x98968     # 0x98968000 
     srli x15, x15, 12     # 0x00098968  
     jal x1, clearArena                
