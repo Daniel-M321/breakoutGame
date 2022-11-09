@@ -41,14 +41,12 @@
   # ====== Register allocation END ======
 
   main:
-    jal x1, clearArena 
-    jal x1, startScreen
-    jal x1, waitForGameGo    # wait for IOIn(2) input to toggle 0-1-0
-    jal x1, clearArena 
-    
     addi x2, x0, 0x6c  ## init stack pointer (sp). Game uses 16x32-bit memory locations (low 64 bytes addresses), we can use 0x40 and above
     addi x2, x2, -16   ## reserves 4x32 bit words
-    jal x1, setupDefaultArena # initialise arena values 
+
+    jal x1, clearArena 
+    jal x1, startScreen
+    jal x1, waitForInput    # wait for IOIn(2) input to toggle 0-1-0 or L-R-L
     #jal x1, setupArena1       
     
     jal x1, updateWallMem
@@ -75,6 +73,10 @@
       jal x1, UpdateScoreMem
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
+      addi x11, x0, 16
+      beq x29, x11, resetWall
+      addi x11, x0, 32
+      beq x29, x11, resetWall
       jal x0, loop1
     
     addi x2, x2, 16  ## restore sp back to init
@@ -475,8 +477,40 @@
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
-  jalr x0, 0(x1)       # ret
+  beq x0, x0, ret_setUpArena       # ret
 
+
+  setupArenaFMode:
+  # dlyCountMax 
+              # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
+    lui  x15, 0x98968   # 0x98968000 
+    srli x15, x15, 12   # 0x00098968 
+    addi x15, x0, 2     # low count delay, for testing 
+  # Wall
+    xori x16, x0, -1    # wall x16 = 0xffffffff
+  # Ball
+    ## lui x17,  0x00010   # ballVec 0b0000 0000 0000 0001 0000 0000 0000 0000 = 0x0007c000
+    addi x18, x0, 1    # CSBallXAdd (4:0)
+    addi x19, x0, 1    # NSBallXAdd (4:0)
+    addi x17, x0, 1
+    sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
+    addi x20, x0, 12    # CSBallYAdd (4:0)
+    addi x21, x0, 12    # NSBallYAdd (4:0)
+    addi x22, x0, 1     # CSBallDir  (2:0) N
+    addi x23, x0, 1	    # NSBallDir  (2:0) N
+    lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
+  # Paddle
+    lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
+    addi x26, x0, 5     # paddleSize
+    addi x27, x0, 2     # paddleXAddLSB
+    lui  x28, 0x00098   # paddleNumDlyCounter 
+  # Score
+    addi x29, x0, 31     # score
+    addi x30, x0, 3     # lives 
+  beq x0, x0, ret_setUpArena       # ret
+
+  ret_setUpArena:
+    jalr x0, 0(x1)       # ret
 
   setupArena1: 
   # dlyCountMax 
@@ -534,39 +568,83 @@
     addi x8, x8, -1        # decrement paddleNumDlyCounter
     addi x9, x9, -1        # decrement ballNumDlyCounter
     jalr x0, 0(x1)         # ret
-    
 
-  waitForGameGo:                    # wait 0-1-0 on input IOIn(2) control switches to start game	
+
+  resetWall:
+    xori x16, x0, -1    # wall x16 = 0xffffffff
+    # beq x0, x0, SmileyFace
+    # beq x0, x0, updateWallMem
+
+  SmileyFace:
+    addi x31, x0, 52     #1
+    lui x12, 0x03030
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0x03030
+    sw x12, 0(x31)
+    addi x31, x0, 36     #3
+    lui x12, 0x00300
+    sw x12, 0(x31)
+    addi x31, x0, 20     #4
+    lui x12, 0x01860
+    sw x12, 0(x31)
+    addi x31, x0, 16     #5
+    lui x12, 0x00FC0
+    sw x12, 0(x31)
+    beq x11, x29, endGame
+    jal x1, loop1
+    
+  waitForInput:                    # wait 0-1-0 on input IOIn(2) control switches to start game	
                                     # one clock delay required in memory peripheral to register change in switch state
   lui  x4, 0x00030                 # 0x00030000 
   addi x4, x4, 8                   # 0x00030008 IOIn(31:0) address 
   addi x8, x0, 4                   # IOIn(2) = 1 compare value
-  addi x31, x0, 3                  # IOIn(1) = LR compare
+  addi x31, x0, 2                  # IOIn(1:0) = L compare
+  addi x12, x0, 1                  # IOIn(1:0) = R compare
+  sw x1, 0(x2)  ## store return address (ra) on sp
+  addi x2, x2, 4  ## increment sp
 
-  waitUntilIOIn2Eq0: 
+  waitUntilIOIn2Start: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
     andi x7, x3, 4                  # mask to keep IOIn(2) 
-    beq  x7, x0, waitUntilIOIn2Eq1  # chk / progress if IOIn(2) = 0
-    beq  x0, x0, waitUntilIOIn2Eq0  # unconditional loop (else keep checking)
+    beq  x7, x0, waitUntilIOIn2     # chk / progress if IOIn(2) = 0
+    beq  x0, x0, waitUntilIOIn2Start  # unconditional loop (else keep checking)
   
-  waitUntilIOIn2Eq1: 
+  waitUntilIOIn2: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
     andi x7, x3, 4                  # mask to keep IOIn(2) 
+    beq  x3, x31, waitUntilR
     beq  x7, x8, waitUntilIOIn2Eq0b # chk / progress if IOIn(2) = 1
-    beq  x0, x0, waitUntilIOIn2Eq1  # unconditional loop (else keep checking)
+    beq  x0, x0, waitUntilIOIn2  # unconditional loop (else keep checking)
 
   waitUntilIOIn2Eq0b: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
     andi x7, x3, 4                  # mask to keep IOIn(2) 
-    beq  x7, x0, ret_waitForGameGo  # chk / progress if IOIn(2) = 0
-
-    beq x4, x31, fModeSetup
-
+    beq  x7, x0, ret_waitForInput010  # chk / progress if IOIn(2) = 0
     beq  x0, x0, waitUntilIOIn2Eq0b # unconditional loop (else keep checking)
 
-  fmodeSetup: # change me (worry about actual setup runnning)
+  waitUntilR:
+    lw x3, 0(x4)
+    beq x3, x12, waitUntilLEnd
+    beq x0, x0, waitUntilR
 
-  ret_waitForGameGo:
+  waitUntilLEnd:
+    lw x3, 0(x4)
+    beq x3, x31, ret_waitForInputLR
+    beq x0, x0, waitUntilLEnd
+
+  ret_waitForInputLR:
+    jal x1, clearArena
+    jal x1, setupArenaFMode
+    addi x2, x2, -4  # decrement sp by 4
+    lw x1, 0(x2)  # load ra from stack
+    jalr x0, 0(x1)                  # ret
+
+  ret_waitForInput010:
+    jal x1, clearArena
+    jal x1, setupDefaultArena
+    addi x2, x2, -4  # decrement sp by 4
+    lw x1, 0(x2)  # load ra from stack
     jalr x0, 0(x1)                  # ret
 
 
@@ -651,6 +729,7 @@
     # 00011100000100001111010010010000 1C10F490
 
   endGame:                # highlight game over in display 
+    jal x1, delay
     lui  x15, 0x98968     # 0x98968000 
     srli x15, x15, 12     # 0x00098968  
     jal x1, clearArena                
