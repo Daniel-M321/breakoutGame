@@ -50,7 +50,7 @@
     #jal x1, setupArena1       
     
     jal x1, updateWallMem
-    sw   x17, 0(x21)          ## storing init ball vector in NSBallYAdd
+    jal x1, updateBallMem         ## storing init ball vector in NSBallYAdd
     jal x1, updatePaddleMem
     jal x1, UpdateScoreMem
     jal x1, UpdateLivesMem
@@ -66,17 +66,17 @@
       add x8,  x0, x28        # load paddleNumDlyCounter start value
     processBall:
       bne x9, x0, loop1       # ballNumDlyCounter = 0? => skip check ball functions 
-      jal x1, chkBallZone     # find ball zone, update 1. ball, 2. wall, 3. score, 4. lives, loop or end game   *****Retuun x19 NSBallXAdd, x21 NSBallXAdd
+      jal x1, chkBallZone     # find ball zone, update 1. ball, 2. wall, 3. score, 4. lives, loop or end game   *****Return x19 NSBallXAdd, x21 NSBallXAdd
       jal x1, updateBallVec   
       jal x1, updateBallMem   # clear CSBallYAdd row, write ballVec to NSBallYAdd, CSBallYAdd = NSBallYAdd (and for XAdd too) 
       jal x1, updateWallMem   ## update wall status, this might want to live elsewhere for nested function calls
       jal x1, UpdateScoreMem
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
-      addi x11, x0, 16
-      beq x29, x11, resetWall
-      addi x11, x0, 32
-      beq x29, x11, resetWall
+      addi x11, x0, 64
+      beq x16, x0, resetWall # if wall has been fully destroyed, reset it
+      addi x11, x0, 64
+      beq x29, x11, resetWall # if wall destroyed a second time, we will end the game.
       jal x0, loop1
     
     addi x2, x2, 16  ## restore sp back to init
@@ -100,7 +100,9 @@
 
   updateBallMem: 		     # write to memory. Requires NSBallXAdd and NSBallYAdd. 
     sw   x17, 0(x21)     ## storing ball vector in NSBallYAdd
-    sw x0, 0(x20)        ## delete current state of ball after the next state has been written
+    beq  x21, x20, keepLastState
+    sw   x0, 0(x20)        ## delete current state of ball after the next state has been written
+    keepLastState:
 
     add x18, x0, x19     ## CSBallXAdd = NSBallXAdd
     add x20, x0, x21     ## CSBallYAdd = NSBallYAdd
@@ -260,15 +262,21 @@
     zone2:
     addi x4, x0, 1
     beq x22, x4, JMPN
-    and x4, x17, x25            ## AND ball and wall to see if they're beside each other
-    beq x4, x0, endRound        ## if AND 0, paddle cannot bounce ball and we lose life
-    slli x31, x17, 1            ## We check if ball is on left edge of paddle, by shifting the ball left and AND it again.
-    and x4, x25, x31
-    beq x4, x0, hitLeftPaddle   ## if AND 0, ball was on left edge 
-    srli x31, x17, 1            ## we do same check for right check 
-    and x4, x25, x31
-    beq x4, x0, hitRightPaddle
-    beq x0, x0, hitMiddlePaddle ## if left and right checks fail, ball at centre of paddle
+
+    sub x31, x18, x27             ## subtract balls xAdd from the paddles LSBxAdd
+    beq x31, x0, hitRightPaddle   ## if 0 on right side
+    addi x12, x0, 4
+    beq x31, x12, hitLeftPaddle   ## if 4 on left side
+    bgt x31, x26, endRound        ## if > 5, not near paddle
+    addi x12, x0, -1  
+    blt x31, x12, endRound        ## if < -1, not near paddle
+    and x4, x17, x25              ## AND ball and wall to see if they're beside each other
+    bne x4, x0, hitMiddlePaddle   ## if AND postive, paddle bounces ball
+    addi x12, x0, 3
+    beq x12, x22, JMPNW           ## if coming in at an angle we can mirror bounce off paddle
+    addi x12, x0, 5
+    beq x12, x22, JMPNE
+    beq x0, x0, endRound
 
     hitMiddlePaddle:            ## SEE fearghals rebound strategy
     addi x4, x0, 5
@@ -321,6 +329,9 @@
     beq x0, x0, updateBallLocationLinear  ## ball will go either N or S linearly
     jalr x0, 0(x1)
 
+    ret_chkZone:
+      jalr x0, 0(x1)    # ret
+
 
   ## ====== Functions for zones START ======
   endRound:
@@ -337,6 +348,7 @@
     addi x23, x0, 1	    ## NSBallDir  (2:0) N
     # paddle
     lui  x25, 0x0007c   ## paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
+    addi x27, x0, 14
     jalr x0, 0(x1)
 
   updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
@@ -423,10 +435,12 @@
     beq x0, x0, ret_chkPaddle     ## if IOIn = 00 or 11, paddle does not move
 
     movePaddleRight:
+    addi x27, x27, -1
     srli x25, x25, 1              ## shift right 1
     beq x0, x0, ret_chkPaddle
 
     movePaddleLeft:
+    addi x27, x27, 1
     slli x25, x25, 1              ## shift left 1
     beq x0, x0, ret_chkPaddle 
 
@@ -468,19 +482,22 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x00130   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
+    lui  x24, 0x1312D   # ballNumDlyCounter (4:0) (1,250,000 delay cycle)
+    srli x24, x24, 8
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
-    addi x27, x0, 2     # paddleXAddLSB
-    lui  x28, 0x00098   # paddleNumDlyCounter 
+    addi x27, x0, 14     # paddleXAddLSB
+    #lui  x28, 0x00098   # paddleNumDlyCounter
+    lui  x28, 0x98968   # paddleNumDlyCounter
+    srli x28, x28, 12   # 0x00098968  
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
   beq x0, x0, ret_setUpArena       # ret
 
 
-  setupArenaFMode:
+  setupArenaFMode:      ## BALL DELAY HALVED IN FMODE (ball and paddle same speed) & BALL STARTS TO RIGHT
   # dlyCountMax 
               # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
     lui  x15, 0x98968   # 0x98968000 
@@ -498,12 +515,15 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
+    lui  x24, 0x98968   # ballNumDlyCounter (4:0) (1,250,000 delay cycle)
+    srli x24, x24, 12
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
-    addi x27, x0, 2     # paddleXAddLSB
-    lui  x28, 0x00098   # paddleNumDlyCounter 
+    addi x27, x0, 14     # paddleXAddLSB
+    #lui  x28, 0x00098   # paddleNumDlyCounter
+    lui  x28, 0x98968   # paddleNumDlyCounter
+    srli x28, x28, 12   # 0x00098968 
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
@@ -569,11 +589,16 @@
     addi x9, x9, -1        # decrement ballNumDlyCounter
     jalr x0, 0(x1)         # ret
 
+  bigDelay:
+    lui x6, 0x5F5E1
+    srli x6, x6, 8 
+    mainBDlyLoop:
+      addi x6, x6, -1        # decrement delay counter
+      bne  x6, x0, mainBDlyLoop
+      jalr x0, 0(x1)         # ret
 
   resetWall:
     xori x16, x0, -1    # wall x16 = 0xffffffff
-    # beq x0, x0, SmileyFace
-    # beq x0, x0, updateWallMem
 
   SmileyFace:
     addi x31, x0, 52     #1
@@ -591,10 +616,11 @@
     addi x31, x0, 16     #5
     lui x12, 0x00FC0
     sw x12, 0(x31)
-    beq x11, x29, endGame
+    addi x11, x0, 64
+    beq x11, x29, endGame # if wall destroyed 2nd time we endgame
     jal x1, loop1
     
-  waitForInput:                    # wait 0-1-0 on input IOIn(2) control switches to start game	
+  waitForInput:                    # wait 0-1-0 on input IOIn(2) control switches to start game	or L-R-L for f-Mode
                                     # one clock delay required in memory peripheral to register change in switch state
   lui  x4, 0x00030                 # 0x00030000 
   addi x4, x4, 8                   # 0x00030008 IOIn(31:0) address 
@@ -625,24 +651,24 @@
 
   waitUntilR:
     lw x3, 0(x4)
-    beq x3, x12, waitUntilLEnd
-    beq x0, x0, waitUntilR
+    beq x3, x12, waitUntilLEnd  ## checking if IOIn(0) active
+    beq x0, x0, waitUntilR      ## unconditional loop 
 
   waitUntilLEnd:
     lw x3, 0(x4)
-    beq x3, x31, ret_waitForInputLR
-    beq x0, x0, waitUntilLEnd
+    beq x3, x31, ret_waitForInputLR ## checking if IOIn(1) active
+    beq x0, x0, waitUntilLEnd       ## unconditional loop 
 
   ret_waitForInputLR:
     jal x1, clearArena
-    jal x1, setupArenaFMode
+    jal x1, setupArenaFMode   ## if L-R-L activated we set up f-Mode
     addi x2, x2, -4  # decrement sp by 4
     lw x1, 0(x2)  # load ra from stack
     jalr x0, 0(x1)                  # ret
 
   ret_waitForInput010:
     jal x1, clearArena
-    jal x1, setupDefaultArena
+    jal x1, setupDefaultArena ## if 0-1-0 activated, default setup 
     addi x2, x2, -4  # decrement sp by 4
     lw x1, 0(x2)  # load ra from stack
     jalr x0, 0(x1)                  # ret
@@ -726,18 +752,18 @@
     sw x12, 0(x31)
     jalr x0, 0(x1)
 
-    # 00011100000100001111010010010000 1C10F490
-
-  endGame:                # highlight game over in display 
-    jal x1, delay
-    lui  x15, 0x98968     # 0x98968000 
-    srli x15, x15, 12     # 0x00098968  
+  endGame:                # highlight game over in display
+    bne x11, x29, noJMP2Delay  
+    jal x1, bigDelay
+    noJMP2Delay:
+    #lui  x15, 0x98968     # 0x98968000 
+    #srli x15, x15, 12     # 0x00098968  
     jal x1, clearArena                
     displayloop:          ## loops and flickers GAME OVER message to user
       jal x1, endScreen
-      jal x1, delay
+      jal x1, bigDelay
       jal x1, clearArena
-      jal x1, delay
+      jal x1, bigDelay
     beq x0, x0, displayloop   ## loop until reset
     
   # ====== Other functions END ======
