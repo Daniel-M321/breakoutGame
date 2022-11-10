@@ -50,7 +50,7 @@
     #jal x1, setupArena1       
     
     jal x1, updateWallMem
-    sw   x17, 0(x21)          ## storing init ball vector in NSBallYAdd
+    jal x1, updateBallMem         ## storing init ball vector in NSBallYAdd
     jal x1, updatePaddleMem
     jal x1, UpdateScoreMem
     jal x1, UpdateLivesMem
@@ -74,9 +74,9 @@
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
       addi x11, x0, 32
-      beq x29, x11, resetWall
+      beq x29, x11, resetWall # if wall has been fully destroyed, reset it
       addi x11, x0, 64
-      beq x29, x11, resetWall
+      beq x29, x11, resetWall # if wall destroyed a second time, we will end the game.
       jal x0, loop1
     
     addi x2, x2, 16  ## restore sp back to init
@@ -100,7 +100,9 @@
 
   updateBallMem: 		     # write to memory. Requires NSBallXAdd and NSBallYAdd. 
     sw   x17, 0(x21)     ## storing ball vector in NSBallYAdd
-    sw x0, 0(x20)        ## delete current state of ball after the next state has been written
+    beq  x21, x20, keepLastState
+    sw   x0, 0(x20)        ## delete current state of ball after the next state has been written
+    keepLastState:
 
     add x18, x0, x19     ## CSBallXAdd = NSBallXAdd
     add x20, x0, x21     ## CSBallYAdd = NSBallYAdd
@@ -590,10 +592,10 @@
     lui x12, 0x00FC0
     sw x12, 0(x31)
     addi x11, x0, 64
-    beq x11, x29, endGame
+    beq x11, x29, endGame # if wall destroyed 2nd time we endgame
     jal x1, loop1
     
-  waitForInput:                    # wait 0-1-0 on input IOIn(2) control switches to start game	
+  waitForInput:                    # wait 0-1-0 on input IOIn(2) control switches to start game	or L-R-L for f-Mode
                                     # one clock delay required in memory peripheral to register change in switch state
   lui  x4, 0x00030                 # 0x00030000 
   addi x4, x4, 8                   # 0x00030008 IOIn(31:0) address 
@@ -624,24 +626,24 @@
 
   waitUntilR:
     lw x3, 0(x4)
-    beq x3, x12, waitUntilLEnd
-    beq x0, x0, waitUntilR
+    beq x3, x12, waitUntilLEnd  ## checking if IOIn(0) active
+    beq x0, x0, waitUntilR      ## unconditional loop 
 
   waitUntilLEnd:
     lw x3, 0(x4)
-    beq x3, x31, ret_waitForInputLR
-    beq x0, x0, waitUntilLEnd
+    beq x3, x31, ret_waitForInputLR ## checking if IOIn(1) active
+    beq x0, x0, waitUntilLEnd       ## unconditional loop 
 
   ret_waitForInputLR:
     jal x1, clearArena
-    jal x1, setupArenaFMode
+    jal x1, setupArenaFMode   ## if L-R-L activated we set up f-Mode
     addi x2, x2, -4  # decrement sp by 4
     lw x1, 0(x2)  # load ra from stack
     jalr x0, 0(x1)                  # ret
 
   ret_waitForInput010:
     jal x1, clearArena
-    jal x1, setupDefaultArena
+    jal x1, setupDefaultArena ## if 0-1-0 activated, default setup 
     addi x2, x2, -4  # decrement sp by 4
     lw x1, 0(x2)  # load ra from stack
     jalr x0, 0(x1)                  # ret
