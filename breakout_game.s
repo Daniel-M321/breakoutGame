@@ -66,7 +66,7 @@
       add x8,  x0, x28        # load paddleNumDlyCounter start value
     processBall:
       bne x9, x0, loop1       # ballNumDlyCounter = 0? => skip check ball functions 
-      jal x1, chkBallZone     # find ball zone, update 1. ball, 2. wall, 3. score, 4. lives, loop or end game   *****Retuun x19 NSBallXAdd, x21 NSBallXAdd
+      jal x1, chkBallZone     # find ball zone, update 1. ball, 2. wall, 3. score, 4. lives, loop or end game   *****Return x19 NSBallXAdd, x21 NSBallXAdd
       jal x1, updateBallVec   
       jal x1, updateBallMem   # clear CSBallYAdd row, write ballVec to NSBallYAdd, CSBallYAdd = NSBallYAdd (and for XAdd too) 
       jal x1, updateWallMem   ## update wall status, this might want to live elsewhere for nested function calls
@@ -262,15 +262,21 @@
     zone2:
     addi x4, x0, 1
     beq x22, x4, JMPN
-    and x4, x17, x25            ## AND ball and wall to see if they're beside each other
-    beq x4, x0, endRound        ## if AND 0, paddle cannot bounce ball and we lose life
-    slli x31, x17, 1            ## We check if ball is on left edge of paddle, by shifting the ball left and AND it again.
-    and x4, x25, x31
-    beq x4, x0, hitLeftPaddle   ## if AND 0, ball was on left edge 
-    srli x31, x17, 1            ## we do same check for right check 
-    and x4, x25, x31
-    beq x4, x0, hitRightPaddle
-    beq x0, x0, hitMiddlePaddle ## if left and right checks fail, ball at centre of paddle
+
+    sub x31, x18, x27             ## subtract balls xAdd from the paddles LSBxAdd
+    beq x31, x0, hitRightPaddle   ## if 0 on right side
+    addi x12, x0, 4
+    beq x31, x12, hitLeftPaddle   ## if 4 on left side
+    bgt x31, x26, endRound        ## if > 5, not near paddle
+    addi x12, x0, -1  
+    blt x31, x12, endRound        ## if < -1, not near paddle
+    and x4, x17, x25              ## AND ball and wall to see if they're beside each other
+    bne x4, x0, hitMiddlePaddle   ## if AND postive, paddle bounces ball
+    addi x12, x0, 3
+    beq x12, x22, JMPNW           ## if coming in at an angle we can mirror bounce off paddle
+    addi x12, x0, 5
+    beq x12, x22, JMPNE
+    beq x0, x0, endRound
 
     hitMiddlePaddle:            ## SEE fearghals rebound strategy
     addi x4, x0, 5
@@ -323,6 +329,9 @@
     beq x0, x0, updateBallLocationLinear  ## ball will go either N or S linearly
     jalr x0, 0(x1)
 
+    ret_chkZone:
+      jalr x0, 0(x1)    # ret
+
 
   ## ====== Functions for zones START ======
   endRound:
@@ -339,6 +348,7 @@
     addi x23, x0, 1	    ## NSBallDir  (2:0) N
     # paddle
     lui  x25, 0x0007c   ## paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
+    addi x27, x0, 14
     jalr x0, 0(x1)
 
   updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
@@ -425,10 +435,12 @@
     beq x0, x0, ret_chkPaddle     ## if IOIn = 00 or 11, paddle does not move
 
     movePaddleRight:
+    addi x27, x27, -1
     srli x25, x25, 1              ## shift right 1
     beq x0, x0, ret_chkPaddle
 
     movePaddleLeft:
+    addi x27, x27, 1
     slli x25, x25, 1              ## shift left 1
     beq x0, x0, ret_chkPaddle 
 
@@ -459,8 +471,7 @@
     srli x15, x15, 12   # 0x00098968 
     addi x15, x0, 2     # low count delay, for testing 
   # Wall
-    #xori x16, x0, -1    # wall x16 = 0xffffffff
-    lui x16, 0x00010
+    xori x16, x0, -1    # wall x16 = 0xffffffff
   # Ball
     ## lui x17,  0x00010   # ballVec 0b0000 0000 0000 0001 0000 0000 0000 0000 = 0x0007c000
     addi x18, x0, 16    # CSBallXAdd (4:0)
@@ -476,12 +487,12 @@
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
-    addi x27, x0, 2     # paddleXAddLSB
+    addi x27, x0, 14     # paddleXAddLSB
     #lui  x28, 0x00098   # paddleNumDlyCounter
     lui  x28, 0x98968   # paddleNumDlyCounter
     srli x28, x28, 12   # 0x00098968  
   # Score
-    addi x29, x0, 63     # score
+    addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
   beq x0, x0, ret_setUpArena       # ret
 
@@ -509,7 +520,7 @@
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
-    addi x27, x0, 2     # paddleXAddLSB
+    addi x27, x0, 14     # paddleXAddLSB
     #lui  x28, 0x00098   # paddleNumDlyCounter
     lui  x28, 0x98968   # paddleNumDlyCounter
     srli x28, x28, 12   # 0x00098968 
@@ -740,8 +751,6 @@
     addi x12, x12, 0x490
     sw x12, 0(x31)
     jalr x0, 0(x1)
-
-    # 00011100000100001111010010010000 1C10F490
 
   endGame:                # highlight game over in display
     bne x11, x29, noJMP2Delay  
