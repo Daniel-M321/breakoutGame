@@ -73,8 +73,8 @@
       jal x1, UpdateScoreMem
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
-      addi x11, x0, 32
-      beq x29, x11, resetWall # if wall has been fully destroyed, reset it
+      addi x11, x0, 64
+      beq x16, x0, resetWall # if wall has been fully destroyed, reset it
       addi x11, x0, 64
       beq x29, x11, resetWall # if wall destroyed a second time, we will end the game.
       jal x0, loop1
@@ -459,7 +459,8 @@
     srli x15, x15, 12   # 0x00098968 
     addi x15, x0, 2     # low count delay, for testing 
   # Wall
-    xori x16, x0, -1    # wall x16 = 0xffffffff
+    #xori x16, x0, -1    # wall x16 = 0xffffffff
+    lui x16, 0x00010
   # Ball
     ## lui x17,  0x00010   # ballVec 0b0000 0000 0000 0001 0000 0000 0000 0000 = 0x0007c000
     addi x18, x0, 16    # CSBallXAdd (4:0)
@@ -470,19 +471,22 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x00130   # ballNumDlyCounter (4:0)  ## enough delay to see ball move
+    lui  x24, 0x1312D   # ballNumDlyCounter (4:0) (1,250,000 delay cycle)
+    srli x24, x24, 8
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 2     # paddleXAddLSB
-    lui  x28, 0x00098   # paddleNumDlyCounter 
+    #lui  x28, 0x00098   # paddleNumDlyCounter
+    lui  x28, 0x98968   # paddleNumDlyCounter
+    srli x28, x28, 12   # 0x00098968  
   # Score
-    addi x29, x0, 0     # score
+    addi x29, x0, 63     # score
     addi x30, x0, 3     # lives 
   beq x0, x0, ret_setUpArena       # ret
 
 
-  setupArenaFMode:      ## BALL DELAY HALVED IN FMODE
+  setupArenaFMode:      ## BALL DELAY HALVED IN FMODE (ball and paddle same speed) & BALL STARTS TO RIGHT
   # dlyCountMax 
               # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
     lui  x15, 0x98968   # 0x98968000 
@@ -500,12 +504,15 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x00098   # ballNumDlyCounter (4:0)  ## double ball speed to default
+    lui  x24, 0x98968   # ballNumDlyCounter (4:0) (1,250,000 delay cycle)
+    srli x24, x24, 12
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 2     # paddleXAddLSB
-    lui  x28, 0x00098   # paddleNumDlyCounter 
+    #lui  x28, 0x00098   # paddleNumDlyCounter
+    lui  x28, 0x98968   # paddleNumDlyCounter
+    srli x28, x28, 12   # 0x00098968 
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
@@ -571,6 +578,13 @@
     addi x9, x9, -1        # decrement ballNumDlyCounter
     jalr x0, 0(x1)         # ret
 
+  bigDelay:
+    lui x6, 0x5F5E1
+    srli x6, x6, 8 
+    mainBDlyLoop:
+      addi x6, x6, -1        # decrement delay counter
+      bne  x6, x0, mainBDlyLoop
+      jalr x0, 0(x1)         # ret
 
   resetWall:
     xori x16, x0, -1    # wall x16 = 0xffffffff
@@ -731,16 +745,16 @@
 
   endGame:                # highlight game over in display
     bne x11, x29, noJMP2Delay  
-    jal x1, delay
+    jal x1, bigDelay
     noJMP2Delay:
-    lui  x15, 0x98968     # 0x98968000 
-    srli x15, x15, 12     # 0x00098968  
+    #lui  x15, 0x98968     # 0x98968000 
+    #srli x15, x15, 12     # 0x00098968  
     jal x1, clearArena                
     displayloop:          ## loops and flickers GAME OVER message to user
       jal x1, endScreen
-      jal x1, delay
+      jal x1, bigDelay
       jal x1, clearArena
-      jal x1, delay
+      jal x1, bigDelay
     beq x0, x0, displayloop   ## loop until reset
     
   # ====== Other functions END ======
