@@ -15,7 +15,7 @@
   # x11 program variable
   # x12 program variable 
   # x13 stores orginal wall if ball enters it
-  # x14 zone
+  # x14 checks if score multiple of 4
   # x15 dlyCountMax. 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
 
   # Wall
@@ -73,7 +73,6 @@
       jal x1, UpdateScoreMem
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
-      addi x11, x0, 64
       beq x16, x0, resetWall # if wall has been fully destroyed, reset it
       addi x11, x0, 64
       beq x29, x11, resetWall # if wall destroyed a second time, we will end the game.
@@ -141,7 +140,8 @@
     and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
     beq x0, x12, JMPSW #no brick to left so can bounce off top wall
     xor x16, x16, x12 #Removing brick from wall and mirror bounce
-    addi x29, x29, 1 
+    addi x29, x29, 1
+    addi x14, x14, 1 
     beq x0, x0, JMPSE
 
     z6Rt: #B
@@ -150,6 +150,7 @@
     beq x0, x12, JMPSE #no brick to right so can bounce of top wall
     xor x16, x16, x12 #Removing brick from wall and mirror bounce
     addi x29, x29, 1 
+    addi x14, x14, 1
     beq x0, x0, JMPSW
 
 
@@ -184,7 +185,8 @@
     beq x0, x0, JMPSE
 
     zone8Brick:#B
-    addi x29, x29, 1              ## increment score    
+    addi x29, x29, 1              ## increment score
+    addi x14, x14, 1    
     xor x16, x16, x17 #Removing brick from wall    
     beq x0, x0, JMPSE
 
@@ -207,7 +209,8 @@
     beq x0, x0, JMPSW
 
     zone9Brick:#B
-    addi x29, x29, 1 ## increment score    
+    addi x29, x29, 1 ## increment score
+    addi x14, x14, 1    
     xor x16, x16, x17 #Removing brick from wall    
     beq x0, x0, JMPSW
 
@@ -231,6 +234,7 @@
     ballHitWall:
     xor x16, x16, x17               ## XOR results in brick missing where ball was
     addi x29, x29, 1                ## update score
+    addi x14, x14, 1
     beq x0, x22, JMPSW              ## NW=0
     addi x4, x0, 1                  ## N=1
     beq x4, x22, JMPS         
@@ -254,6 +258,7 @@
     scoreDiag:
     xor x16, x16, x31               ## XOR ball and wall to delete brick where previously shifted ball is
     addi x29, x29, 1
+    addi x14, x14, 1
     addi x4, x0, 2                  ## NW=2
     beq x4, x22, JMPSW              ## we mirror back if hitting brick at corner
     beq x0, x22, JMPSE
@@ -450,7 +455,19 @@
 
 
   # ====== Score and Lives functions START ======
-  UpdateScoreMem:  
+  UpdateScoreMem:
+    addi x4, x0, 5
+    blt x28, x4, ballspeed        ## if paddle speed is already below 5, go to ball speed
+    addi x4, x0, 12
+    bne x4, x29, ballspeed        ## if score not yet at 12, go to ball speed
+    addi x28, x28, -2             ## else decrement paddle speed
+    ballspeed:
+    addi x4, x0, 4
+    beq x24, x4, saveScore        ## if ball speed already at 4, go to save score
+    bne x14, x4, saveScore        ## if score not multiple of 4, go to save score
+    addi x14, x0, 0
+    addi x24, x24, -1             ## else reset counter and decrement ball speed
+    saveScore:
     sw   x29, 0(x0)     # store score 
     jalr x0, 0(x1)      # ret
 
@@ -469,7 +486,7 @@
               # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
     lui  x15, 0x98968   # 0x98968000 
     srli x15, x15, 12   # 0x00098968 
-    addi x15, x0, 2     # low count delay, for testing 
+    #addi x15, x0, 2     # low count delay, for testing 
   # Wall
     xori x16, x0, -1    # wall x16 = 0xffffffff
   # Ball
@@ -482,15 +499,17 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x1312D   # ballNumDlyCounter (4:0) (1,250,000 delay cycle)
-    srli x24, x24, 8
+    #lui  x24, 0x1312D  # (1,250,000 delay cycle)
+    #srli x24, x24, 8
+    addi x24, x0, 8     # ballNumDlyCounter (4:0)
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 14     # paddleXAddLSB
-    #lui  x28, 0x00098   # paddleNumDlyCounter
-    lui  x28, 0x98968   # paddleNumDlyCounter
-    srli x28, x28, 12   # 0x00098968  
+    #lui  x28, 0x00098   
+    #lui  x28, 0x98968   
+    #srli x28, x28, 12   # 0x00098968  
+    addi x28, x0, 5      # paddleNumDlyCounter
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
@@ -502,7 +521,7 @@
               # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
     lui  x15, 0x98968   # 0x98968000 
     srli x15, x15, 12   # 0x00098968 
-    addi x15, x0, 2     # low count delay, for testing 
+    #addi x15, x0, 2     # low count delay, for testing 
   # Wall
     xori x16, x0, -1    # wall x16 = 0xffffffff
   # Ball
@@ -515,15 +534,17 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    lui  x24, 0x98968   # ballNumDlyCounter (4:0) (1,250,000 delay cycle)
-    srli x24, x24, 12
+    #lui  x24, 0x98968  # (1,250,000 delay cycle)
+    #srli x24, x24, 12
+    addi x24, x0, 4     # ballNumDlyCounter (4:0)
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 14     # paddleXAddLSB
-    #lui  x28, 0x00098   # paddleNumDlyCounter
-    lui  x28, 0x98968   # paddleNumDlyCounter
-    srli x28, x28, 12   # 0x00098968 
+    #lui  x28, 0x00098  
+    #lui  x28, 0x98968   
+    #srli x28, x28, 12   # 0x00098968 
+    addi x28, x0, 4     # paddleNumDlyCounter
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
@@ -599,6 +620,8 @@
 
   resetWall:
     xori x16, x0, -1    # wall x16 = 0xffffffff
+    addi x24, x0, 4     # ballNumDlyCounter
+    addi x28, x0, 4     # paddleNumDlyCounter
 
   SmileyFace:
     addi x31, x0, 52     #1
