@@ -354,6 +354,7 @@
     # paddle
     lui  x25, 0x0007c   ## paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x27, x0, 14
+    beq x0, x0, sadFace
     jalr x0, 0(x1)
 
   updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
@@ -516,7 +517,7 @@
   beq x0, x0, ret_setUpArena       # ret
 
 
-  setupArenaFMode:      ## BALL DELAY HALVED IN FMODE (ball and paddle same speed) & BALL STARTS TO RIGHT
+  setupArenaFMode:      ## BALL DELAY HALVED IN FMODE (ball and paddle same speed) & BALL STARTS TO THE RIGHT
   # dlyCountMax 
               # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
     lui  x15, 0x98968   # 0x98968000 
@@ -616,7 +617,7 @@
     mainBDlyLoop:
       addi x6, x6, -1        # decrement delay counter
       bne  x6, x0, mainBDlyLoop
-      jalr x0, 0(x1)         # ret
+      beq x0, x0, clearArena
 
   resetWall:
     xori x16, x0, -1    # wall x16 = 0xffffffff
@@ -642,6 +643,27 @@
     addi x11, x0, 64
     beq x11, x29, endGame # if wall destroyed 2nd time we endgame
     jal x1, loop1
+
+  sadFace:
+    addi x31, x0, 52     #1
+    lui x12, 0x03030
+    sw x12, 0(x31)
+    addi x31, x0, 48     #2
+    lui x12, 0x03030
+    sw x12, 0(x31)
+    addi x31, x0, 36     #3
+    lui x12, 0x00300
+    sw x12, 0(x31)
+    addi x31, x0, 20     #4
+    lui x12, 0x00FC0
+    sw x12, 0(x31)
+    addi x31, x0, 16     #5
+    lui x12, 0x01860
+    sw x12, 0(x31)
+    addi x31, x0, 12     #6
+    lui x12, 0x0
+    sw x12, 0(x31)
+    beq x0, x0, bigDelay
     
   waitForInput:                    # wait 0-1-0 on input IOIn(2) control switches to start game	or L-R-L for f-Mode
                                     # one clock delay required in memory peripheral to register change in switch state
@@ -776,16 +798,11 @@
     jalr x0, 0(x1)
 
   endGame:                # highlight game over in display
-    bne x11, x29, noJMP2Delay  
-    jal x1, bigDelay
-    noJMP2Delay:
-    #lui  x15, 0x98968     # 0x98968000 
-    #srli x15, x15, 12     # 0x00098968  
-    jal x1, clearArena                
+    bne x11, x29, displayloop  
+    jal x1, bigDelay               
     displayloop:          ## loops and flickers GAME OVER message to user
       jal x1, endScreen
       jal x1, bigDelay
-      jal x1, clearArena
       jal x1, bigDelay
     beq x0, x0, displayloop   ## loop until reset
     
