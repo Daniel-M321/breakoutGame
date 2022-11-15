@@ -74,8 +74,6 @@
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
       beq x16, x0, resetWall # if wall has been fully destroyed, reset it
-      addi x11, x0, 64
-      beq x29, x11, resetWall # if wall destroyed a second time, we will end the game.
       jal x0, loop1
     
     addi x2, x2, 16  ## restore sp back to init
