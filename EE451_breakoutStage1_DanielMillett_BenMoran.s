@@ -778,19 +778,19 @@ setupArenaNext6:         ## end game, one wall piece left and score is 63
 
   startScreen:
     addi x31, x0, 52     #1
-    lui x10, 0x49723
+    lui x10, 0x493a3
     addi x10, x10, 0x76e
     sw x10, 0(x31)
     addi x31, x0, 48     #2
-    lui x10, 0xaaa54
+    lui x10, 0xaa954
     addi x10, x10, 0x254
     sw x10, 0(x31)
     addi x31, x0, 44     #3
-    lui x10, 0xaaa53
+    lui x10, 0xaa953
     addi x10, x10, 0x264
     sw x10, 0(x31)
     addi x31, x0, 40     #4
-    lui x10, 0x49227
+    lui x10, 0x49127
     addi x10, x10, 0x254
     sw x10, 0(x31)
     addi x31, x0, 32     #5
