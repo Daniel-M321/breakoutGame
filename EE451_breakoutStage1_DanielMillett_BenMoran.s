@@ -46,11 +46,10 @@
     addi x2, x2, -16   ## reserves 4x32 bit words
 
     jal x1, clearArena 
-    jal x1, startScreen     # displays message on how to start the game
 
-    # -- INFO -- If you want to remove 010 to start: comment this line below and uncomment the line that jumps to 'setUpDefaultArena' under (line 52)
+    # -- INFO -- If you want to remove 010 to start: comment this line below and uncomment the line under that jumps to 'setUpDefaultArena' (line 52)
     jal x1, waitForInput    # wait for IOIn(2) input to toggle 0-1-0 or L-R-L, then setups Arena according to the input
-    #jal x1, setUpDefaultArena
+    #jal x1, setupDefaultArena
 
     # -- INFO -- You can uncomment one of these at a time to test different situations, full descriptions are beside the label names, just CTRL F search for them.
     #jal x1, setupArenaNext1
@@ -727,10 +726,11 @@ setupArenaNext6:         ## end game, one wall piece left and score is 63
   lui  x4, 0x00030                 # 0x00030000 
   addi x4, x4, 8                   # 0x00030008 IOIn(31:0) address 
   addi x8, x0, 4                   # IOIn(2) = 1 compare value
-  addi x31, x0, 2                  # IOIn(1:0) = L compare
+  addi x11, x0, 2                  # IOIn(1:0) = L compare
   addi x12, x0, 1                  # IOIn(1:0) = R compare
   sw x1, 0(x2)  ## store return address (ra) on sp
   addi x2, x2, 4  ## increment sp
+  beq x0, x0, startScreen         # displays message on how to start the game
 
   waitUntilIOInStart: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
@@ -741,7 +741,7 @@ setupArenaNext6:         ## end game, one wall piece left and score is 63
   waitUntilIOIn2: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
     andi x7, x3, 4                  # mask to keep IOIn(2) 
-    beq  x3, x31, waitUntilR        # if L activated, we go to waiting for R
+    beq  x3, x11, waitUntilR        # if L activated, we go to waiting for R
     beq  x7, x8, waitUntilIOIn2Eq0 # chk / progress if IOIn(2) = 1
     beq  x0, x0, waitUntilIOIn2  # unconditional loop (else keep checking)
 
@@ -758,7 +758,7 @@ setupArenaNext6:         ## end game, one wall piece left and score is 63
 
   waitUntilLEnd:
     lw x3, 0(x4)
-    beq x3, x31, ret_waitForInputLR ## checking if IOIn(1) active
+    beq x3, x11, ret_waitForInputLR ## checking if IOIn(1) active
     beq x0, x0, waitUntilLEnd       ## unconditional loop 
 
   ret_waitForInputLR:
@@ -778,38 +778,38 @@ setupArenaNext6:         ## end game, one wall piece left and score is 63
 
   startScreen:
     addi x31, x0, 52     #1
-    lui x12, 0x49723
-    addi x12, x12, 0x76e
-    sw x12, 0(x31)
+    lui x10, 0x49723
+    addi x10, x10, 0x76e
+    sw x10, 0(x31)
     addi x31, x0, 48     #2
-    lui x12, 0xaaa54
-    addi x12, x12, 0x254
-    sw x12, 0(x31)
+    lui x10, 0xaaa54
+    addi x10, x10, 0x254
+    sw x10, 0(x31)
     addi x31, x0, 44     #3
-    lui x12, 0xaaa53
-    addi x12, x12, 0x264
-    sw x12, 0(x31)
+    lui x10, 0xaaa53
+    addi x10, x10, 0x264
+    sw x10, 0(x31)
     addi x31, x0, 40     #4
-    lui x12, 0x49227
-    addi x12, x12, 0x254
-    sw x12, 0(x31)
+    lui x10, 0x49227
+    addi x10, x10, 0x254
+    sw x10, 0(x31)
     addi x31, x0, 32     #5
-    lui x12, 0x47404
-    addi x12, x12, 0x940
-    sw x12, 0(x31)
+    lui x10, 0x47404
+    addi x10, x10, 0x940
+    sw x10, 0(x31)
     addi x31, x0, 28     #6
-    lui x12, 0x4547a
-    addi x12, x12, 0x2a0
-    sw x12, 0(x31)
+    lui x10, 0x4547a
+    addi x10, x10, 0x2a0
+    sw x10, 0(x31)
     addi x31, x0, 24     #7
-    lui x12, 0x46404
-    addi x12, x12, 0xaa0
-    sw x12, 0(x31)
+    lui x10, 0x46404
+    addi x10, x10, 0xaa0
+    sw x10, 0(x31)
     addi x31, x0, 20     #8
-    lui x12, 0x7577a
-    addi x12, x12, 0x2a8
-    sw x12, 0(x31)
-    jalr x0, 0(x1)      # ret
+    lui x10, 0x7577a
+    addi x10, x10, 0x2a8
+    sw x10, 0(x31)
+    beq x0, x0, waitUntilIOInStart
 
   endScreen:
     addi x31, x0, 52     #1
