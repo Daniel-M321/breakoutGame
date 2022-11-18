@@ -1,4 +1,5 @@
   # Breakout game
+  ## Daniel Millett & Ben Moran
 
   # ====== Register allocation START ======
   # x0 always = 0
@@ -45,12 +46,22 @@
     addi x2, x2, -16   ## reserves 4x32 bit words
 
     jal x1, clearArena 
-    jal x1, startScreen
-    jal x1, waitForInput    # wait for IOIn(2) input to toggle 0-1-0 or L-R-L
-    #jal x1, setupArena1       
+    jal x1, startScreen     # displays message on how to start the game
+
+    # -- INFO -- If you want to remove 010 to start: comment this line below and uncomment the line that jumps to 'setUpDefaultArena' under (line 52)
+    jal x1, waitForInput    # wait for IOIn(2) input to toggle 0-1-0 or L-R-L, then setups Arena according to the input
+    #jal x1, setUpDefaultArena
+
+    # -- INFO -- You can uncomment one of these at a time to test different situations, full descriptions are beside the label names, just CTRL F search for them.
+    #jal x1, setupArenaNext1
+    #jal x1, setupArenaNext2
+    #jal x1, setupArenaNext3 
+    #jal x1, setupArenaNext4    
+    #jal x1, setupArenaNext5 
+    #jal x1, setupArenaNext6
     
     jal x1, updateWallMem
-    jal x1, updateBallMem         ## storing init ball vector in NSBallYAdd
+    jal x1, updateBallMem
     jal x1, updatePaddleMem
     jal x1, UpdateScoreMem
     jal x1, UpdateLivesMem
@@ -109,37 +120,37 @@
 
   chkBallZone:
     addi x4, x0, 56
-    bgt x20, x4, zone6  ## if highest y address (y=15), ball in wall
+    bgt x20, x4, zone6  ## if highest y address (y=15), ball in wallVec
     addi x4, x0, 30
-    bgt x18, x4, leftWall ## if highest x address (x=31), ball at left wall
+    bgt x18, x4, leftWall ## if highest x address (x>30), ball at left wall
     addi x4, x0, 1
-    blt x18, x4, rightWall ## if lowest x address (x=0), ball at right wall
+    blt x18, x4, rightWall ## if lowest x address (x<1), ball at right wall
     addi x4, x0, 52
-    bgt x20, x4, zone3 ## if 2nd highest y address (y=14), ball just below wall
+    bgt x20, x4, zone3 ## if 2nd highest y address (y=14), ball just below wallVec
     addi x4, x0, 16
-    blt x20, x4, zone2  ## if y below y=5, ball above paddle zone
-    beq x0, x0, updateBallLocationLinear
+    blt x20, x4, zone2  ## if y<4, ball above paddle zone
+    beq x0, x0, updateBallLocationLinear   ## if none of these conditions meet, we are in the middle and can move in linear direction only
 
-    zone6: #B 
+    zone6: #B, ball in wallVec
     addi x16, x13, 0
     addi x4, x0, 30
-    bgt x18, x4, JMPSE ## if highest x address (x=31), ball in left corner
+    bgt x18, x4, JMPSE ## if highest x address (x>30), ball in left corner
     addi x4, x0, 1
-    blt x18, x4, JMPSW ## if lowest x address (x=0), ball in right corner
+    blt x18, x4, JMPSW ## if lowest x address (x<1), ball in right corner
     addi x4, x0, 1
-    beq x22, x4, JMPS   ## N=1 
-    beq x22, x0, z6Lft   ## NW=0 
+    beq x22, x4, JMPS   ## if Dir=1 (N), go S 
+    beq x22, x0, z6Lft   ## if Dir=0 (NW)
     addi x4, x0, 2
-    beq x22, x4, z6Rt   ## NE=2    
+    beq x22, x4, z6Rt   ## if Dir=2 (NE)    
     jalr x0, 0(x1)
 
-    z6Lft: #B
+    z6Lft: #B, Zone6 ball going left
     slli x11, x17, 1 #shifting the ball left 1
     and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
     beq x0, x12, JMPSW #no brick to left so can bounce off top wall
     xor x16, x16, x12 #Removing brick from wall and mirror bounce
-    addi x29, x29, 1
-    addi x14, x14, 1 
+    addi x29, x29, 1  # score
+    addi x14, x14, 1  # counter
     beq x0, x0, JMPSE
 
     z6Rt: #B
@@ -157,7 +168,7 @@
     blt x20, x4, zone7  ## if y is just above paddle zone, ball at bottom left corner
     addi x4, x0, 52
     blt x20, x4, zone5  ## if y is between corners, ball against left wall not in corners
-    beq x0, x0, zone8 #B
+    beq x0, x0, zone8 #B   else ball in top left corner below wallVec
     jalr x0, 0(x1)
 
     rightWall:
@@ -165,13 +176,13 @@
     blt x20, x4, zone10  ## if y is above just paddle zone, ball at bottom right corner
     addi x4, x0, 52
     blt x20, x4, zone4  ## if y is between corners, ball against right wall not in corners
-    beq x0, x0, zone9 #B
+    beq x0, x0, zone9 #B   else ball in top right corner below wallVec
     jalr x0, 0(x1)
     
 
-    zone8: #B
+    zone8: #B          top left corner below wallVec
     addi x4, x0, 2
-    bgt x22, x4, JMPSE #Checking if the direction is south
+    bgt x22, x4, JMPSE #Checking if the direction is south -> mirror bounce
     and x11, x16, x17 # Checking if the ball is below a brick
     bne x0, x11, zone8Brick #there is a brick if this is equal
     srli x11, x17, 1 #Shifting the ball right one
@@ -179,7 +190,7 @@
     addi x13, x16, 0                ## stores wall without ball vector for restoring later
     beq x12, x0, putBallInWallL #if this is equal, no brick in way, put ball in wall
     addi x29, x29, 1   ## increment score   
-    xor x16, x11, x16 #deleteing wall to temp
+    xor x16, x11, x16 # deleting wall piece with temp shifted Ball
     beq x0, x0, JMPSE
 
     zone8Brick:#B
@@ -193,7 +204,7 @@
     beq x0, x0, JMPNE 
 
 
-    zone9: #B
+    zone9: #B      top right corner below wallVec
     addi x4, x0, 2
     bgt x22, x4, JMPSW #Checking if the direction is south
     and x11, x16, x17 # Checking if the ball is below a brick
@@ -203,7 +214,7 @@
     addi x13, x16, 0                ## stores wall without ball vector for restoring later
     beq x12, x0, putBallInWallR #if this is equal, no brick in way, we put ball in wall
     addi x29, x29, 1   ## increment score   
-    xor x16, x12, x16 #deleting wall to temp
+    xor x16, x12, x16 #deleting wall with temp shifted Ball
     beq x0, x0, JMPSW
 
     zone9Brick:#B
@@ -222,7 +233,7 @@
     bgt x22, x4, updateBallLocationLinear ## Checking if the direction is south
     addi x13, x16, 0                ## stores wall without ball vector for restoring later
     and x4, x16, x17
-    bne x4, x0, ballHitWall         ## if ball and wall brick beside each other going north, ball has hit wall
+    bne x4, x0, ballHitWall         ## if ball and wall brick beside each other going anyway north, ball has hit wall
     beq x0, x22, checkIfWallLeft    ## if no brick above us and we are not going directly north, we check the bricks beside us
     addi x4, x0, 2
     beq x4, x22, checkIfWallRight
@@ -240,7 +251,7 @@
     beq x4, x22, JMPSE
 
     checkIfWallLeft:
-    slli x31, x17, 1                ## shift ball left to AND against wall
+    slli x31, x17, 1                ## shift ball left, then we can AND it against wall
     and x4, x31, x16
     bne x0, x4, scoreDiag               ## if AND postive, ball is heading towards brick
     or x16, x31, x16                ## if AND negative, OR the shifted ball with the wall to put the ball in the wall vector.
@@ -255,7 +266,7 @@
 
     scoreDiag:
     xor x16, x16, x31               ## XOR ball and wall to delete brick where previously shifted ball is
-    addi x29, x29, 1
+    addi x29, x29, 1                ## score
     addi x14, x14, 1
     addi x4, x0, 2                  ## NW=2
     beq x4, x22, JMPSW              ## we mirror back if hitting brick at corner
@@ -273,10 +284,10 @@
     bgt x31, x26, endRound        ## if > 5, not near paddle
     addi x12, x0, -1  
     blt x31, x12, endRound        ## if < -1, not near paddle
-    and x4, x17, x25              ## AND ball and wall to see if they're beside each other
+    and x4, x17, x25              ## AND ball and paddle to see if they're definetly beside each other
     bne x4, x0, hitMiddlePaddle   ## if AND postive, paddle bounces ball
     addi x12, x0, 3
-    beq x12, x22, JMPNW           ## if coming in at an angle we can mirror bounce off paddle
+    beq x12, x22, JMPNW           ## if coming in at an angle we can bounce at angle off paddle
     addi x12, x0, 5
     beq x12, x22, JMPNE
     beq x0, x0, endRound
@@ -352,9 +363,9 @@
     # paddle
     lui  x25, 0x0007c   ## paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x27, x0, 14
-    beq x0, x0, sadFace
+    beq x0, x0, sadFace ## display sad face
 
-  updateBallLocationLinear:  ## update linear ball direction according to CSBallDir (North & South are fist as they have a higher % of being called on)
+  updateBallLocationLinear:  ## update linear ball direction according to CSBallDir
     addi x4, x0, 1
     beq x22, x4, JMPN   ## N=1
     addi x4, x0, 4
@@ -455,16 +466,16 @@
   # ====== Score and Lives functions START ======
   UpdateScoreMem:
     addi x4, x0, 5
-    blt x28, x4, ballspeed        ## if paddle speed is already below 5, go to ball speed
+    blt x28, x4, ballspeed        ## if paddle delay is already below 5, go to ball speed
     addi x4, x0, 12
     bne x4, x29, ballspeed        ## if score not yet at 12, go to ball speed
-    addi x28, x28, -2             ## else decrement paddle speed
+    addi x28, x28, -2             ## else decrement paddle delay
     ballspeed:
     addi x4, x0, 4
-    beq x24, x4, saveScore        ## if ball speed already at 4, go to save score
+    beq x24, x4, saveScore        ## if ball delay already at 4, go to save score
     bne x14, x4, saveScore        ## if score not multiple of 4, go to save score
     addi x14, x0, 0
-    addi x24, x24, -1             ## else reset counter and decrement ball speed
+    addi x24, x24, -1             ## else reset counter and decrement ball delay
     saveScore:
     sw   x29, 0(x0)     # store score 
     jalr x0, 0(x1)      # ret
@@ -484,11 +495,9 @@
               # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
     lui  x15, 0x98968   # 0x98968000 
     srli x15, x15, 12   # 0x00098968 
-    #addi x15, x0, 2     # low count delay, for testing 
   # Wall
     xori x16, x0, -1    # wall x16 = 0xffffffff
   # Ball
-    ## lui x17,  0x00010   # ballVec 0b0000 0000 0000 0001 0000 0000 0000 0000 = 0x0007c000
     addi x18, x0, 16    # CSBallXAdd (4:0)
     addi x19, x0, 16    # NSBallXAdd (4:0)
     addi x17, x0, 1
@@ -497,33 +506,26 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    #lui  x24, 0x1312D  # (1,250,000 delay cycle)
-    #srli x24, x24, 8
-    addi x24, x0, 8     # ballNumDlyCounter (4:0)
+    addi x24, x0, 8     # ballNumDlyMax
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 14     # paddleXAddLSB
-    #lui  x28, 0x00098   
-    #lui  x28, 0x98968   
-    #srli x28, x28, 12   # 0x00098968  
-    addi x28, x0, 5      # paddleNumDlyCounter
+    addi x28, x0, 5      # paddleNumDlyMax
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
   beq x0, x0, ret_setUpArena       # ret
 
 
-  setupArenaFMode:      ## BALL DELAY HALVED IN FMODE (ball and paddle same speed) & BALL STARTS TO THE RIGHT
+  setupArenaFMode:      ## BALL DELAY HALVED IN FMODE (ball and paddle same speed) & BALL STARTS TO THE RIGHT (BE READY TO LOSE)
   # dlyCountMax 
               # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
     lui  x15, 0x98968   # 0x98968000 
     srli x15, x15, 12   # 0x00098968 
-    #addi x15, x0, 2     # low count delay, for testing 
   # Wall
     xori x16, x0, -1    # wall x16 = 0xffffffff
   # Ball
-    ## lui x17,  0x00010   # ballVec 0b0000 0000 0000 0001 0000 0000 0000 0000 = 0x0007c000
     addi x18, x0, 1    # CSBallXAdd (4:0)
     addi x19, x0, 1    # NSBallXAdd (4:0)
     addi x17, x0, 1
@@ -532,17 +534,12 @@
     addi x21, x0, 12    # NSBallYAdd (4:0)
     addi x22, x0, 1     # CSBallDir  (2:0) N
     addi x23, x0, 1	    # NSBallDir  (2:0) N
-    #lui  x24, 0x98968  # (1,250,000 delay cycle)
-    #srli x24, x24, 12
-    addi x24, x0, 4     # ballNumDlyCounter (4:0)
+    addi x24, x0, 4     # ballNumDlyMax
   # Paddle
     lui  x25, 0x0007c   # paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x26, x0, 5     # paddleSize
     addi x27, x0, 14     # paddleXAddLSB
-    #lui  x28, 0x00098  
-    #lui  x28, 0x98968   
-    #srli x28, x28, 12   # 0x00098968 
-    addi x28, x0, 4     # paddleNumDlyCounter
+    addi x28, x0, 4     # paddleNumDlyMax
   # Score
     addi x29, x0, 0     # score
     addi x30, x0, 3     # lives 
@@ -551,32 +548,95 @@
   ret_setUpArena:
     jalr x0, 0(x1)       # ret
 
-  setupArena1: 
-  # dlyCountMax 
-              # 12.5MHz clock frequency. Two instructions per delay cycle => 6,250,000 delay cycles per second, 625,000 (0x98968) delay cycles per 100msec
-    lui  x15, 0x98968   # 0x98968000 
-    srli x15, x15, 12   # 0x00098968 
-    #addi x15, x0, 2    # low count delay, for testing 
-  # Wall
-    lui  x16, 0xfedcb  
+
+## ----- test setups START ------
+
+  setupArenaNext1:      ## Drops ball on to side of paddle: Tests paddle, right wall zone, and zone below wall
   # Ball
-  # lui  x17, 0x00010  # ballVec 0b0000 0000 0000 0001 0000 0000 0000 0000 = 0x0007c000
-    addi x18, x0, 6     # CSBallXAdd (4:0)
-    addi x19, x0, 6     # NSBallXAdd (4:0)
-    addi x20, x0, 12     # CSBallYAdd (4:0) ##added in 12 for y address 3
-    addi x21, x0, 12     # NSBallYAdd (4:0) ## same^
-    addi x22, x0, 6     # CSBallDir  (2:0)  NW
-    addi x23, x0, 6	  # NSBallDir  (2:0)  NW
-    addi x24, x0, 0x5    # ballNumDlyCounter (4:0)
+    addi x18, x0, 16    # CSBallXAdd (4:0)
+    addi x19, x0, 16    # NSBallXAdd (4:0)
+    addi x17, x0, 1
+    sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
+    addi x20, x0, 24    # CSBallYAdd (4:0)
+    addi x21, x0, 20    # NSBallYAdd (4:0)
+    addi x22, x0, 4     # CSBallDir  (2:0) S
+    addi x23, x0, 4	    # NSBallDir  (2:0) S
   # Paddle
-    lui  x25, 0x007f8   # 0x007f8000 paddleVec = 0b0000 0000 0111 1111 1000 0000 0000 0000
-    addi x26, x0, 8     # paddleSize
-    addi x27, x0, 3     # paddleXAddLSB
-    addi x28, x0, 0x4    # paddleNumDlyCounter 
+    lui  x25, 0x001f0   # paddleVec 0b0000 0000 0001 1111 0000 0000 0000 0000 = 0x0007c000
+    addi x27, x0, 16    # paddleXAddLSB
+  beq x0, x0, ret_setUpArena       # ret
+
+  setupArenaNext2:         # ball is going to bottom left corner, can move the paddle or not to test if bounces or life lost
+  # Ball
+    addi x18, x0, 29    # CSBallXAdd (4:0)
+    addi x19, x0, 29    # NSBallXAdd (4:0)
+    addi x17, x0, 1
+    sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
+    addi x20, x0, 20    # CSBallYAdd (4:0)
+    addi x21, x0, 20    # NSBallYAdd (4:0)
+    addi x22, x0, 5     # CSBallDir  (2:0) SW
+    addi x23, x0, 5	    # NSBallDir  (2:0) SW
+  # Paddle
+    lui  x25, 0xf8000   # paddleVec 0b1111 1000 0000 0000 0000 0000 0000 0000 = 0x0007c000
+    addi x27, x0, 27     # paddleXAddLSB
+  beq x0, x0, ret_setUpArena       # ret
+
+  setupArenaNext3:         ## ball will start going to top right corner under the wallVec (if you leave the paddle, it will mirror bounce and test further edge cases
+  # Ball                                                                                  ## such as going into wallVec zone, leaving wallVec and hitting paddle on corner) 
+    addi x18, x0, 2    # CSBallXAdd (4:0)
+    addi x19, x0, 2    # NSBallXAdd (4:0)
+    addi x17, x0, 1
+    sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
+    addi x20, x0, 48    # CSBallYAdd (4:0)
+    addi x21, x0, 48    # NSBallYAdd (4:0)
+    addi x22, x0, 2     # CSBallDir  (2:0) NE
+    addi x23, x0, 2	    # NSBallDir  (2:0) NE
+  # Paddle
+    lui  x25, 0x0001f   # paddleVec 0b0000 0000 0000 0001 1111 0000 0000 0000 = 0x0007c000
+    addi x27, x0, 12     # paddleXAddLSB
+  beq x0, x0, ret_setUpArena       # ret
+
+  setupArenaNext4:         ## There is only one wall piece left, have fun entering and leaving wallVec especially at angles. You can also see what happens when you hit the last piece.
+  # Wall                                                                                                           ## And you can first see the ball hitting the corner in the wallVec
+    lui x16, 0x40000    # wall x16 = 0x40000000
+  # Ball 
+    addi x18, x0, 3    # CSBallXAdd (4:0)
+    addi x19, x0, 3    # NSBallXAdd (4:0)
+    addi x17, x0, 1
+    sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
+    addi x20, x0, 48    # CSBallYAdd (4:0)
+    addi x21, x0, 48    # NSBallYAdd (4:0)
+    addi x22, x0, 2     # CSBallDir  (2:0) NE
+    addi x23, x0, 2	    # NSBallDir  (2:0) NE
   # Score
-    addi x29, x0, 3     # score
-    addi x30, x0, 5     # lives 
-    jalr x0, 0(x1)      # ret
+    addi x29, x0, 31     # score
+  beq x0, x0, ret_setUpArena       # ret
+
+  setupArenaNext5:        ## The wall is empty every second piece, you can test hitting these pieces at different angles, the ball first hits one and mirror bounces back
+  # Wall
+    lui x16, 0xaaaab
+    addi x16, x16, 0xaaa    # wall x16 = 0xaaaaaaaa
+  # Ball
+    addi x18, x0, 6    # CSBallXAdd (4:0)
+    addi x19, x0, 6    # NSBallXAdd (4:0)
+    addi x17, x0, 1
+    sll  x17, x17, x19  ## putting ball in location regarding x19, NSBallXAdd
+    addi x20, x0, 48    # CSBallYAdd (4:0)
+    addi x21, x0, 48    # NSBallYAdd (4:0)
+    addi x22, x0, 2     # CSBallDir  (2:0) NE
+    addi x23, x0, 2	    # NSBallDir  (2:0) NE
+  # Score
+    addi x29, x0, 16
+  beq x0, x0, ret_setUpArena       # ret
+
+setupArenaNext6:         ## end game, one wall piece left and score is 63
+  # Wall
+    lui x16, 0x00010    # wall x16 = 0xffffffff
+  # Score
+    addi x29, x0, 63     
+  beq x0, x0, ret_setUpArena       # ret
+  
+## ---- test setups END -----
 
 
   clearArena: 
@@ -609,7 +669,7 @@
     jalr x0, 0(x1)         # ret
 
   bigDelay:
-    lui x6, 0x5F5E1
+    lui x6, 0x5F5E1         # 1s delay
     srli x6, x6, 8 
     mainBDlyLoop:
       addi x6, x6, -1        # decrement delay counter
@@ -618,8 +678,8 @@
 
   resetWall:
     xori x16, x0, -1    # wall x16 = 0xffffffff
-    addi x24, x0, 4     # ballNumDlyCounter
-    addi x28, x0, 4     # paddleNumDlyCounter
+    addi x24, x0, 4     # ballNumDlyMax, when wall reset after clearing, immediately go into F mode pace
+    addi x28, x0, 4     # paddleNumDlyMax
 
   SmileyFace:
     addi x31, x0, 52     #1
@@ -662,7 +722,7 @@
     sw x12, 0(x31)
     beq x0, x0, bigDelay
     
-  waitForInput:                    # wait 0-1-0 on input IOIn(2) control switches to start game	or L-R-L for f-Mode
+  waitForInput:                    # wait 0-1-0 on input IOIn(2) control switches to start normal game	or L-R-L for f-Mode
                                     # one clock delay required in memory peripheral to register change in switch state
   lui  x4, 0x00030                 # 0x00030000 
   addi x4, x4, 8                   # 0x00030008 IOIn(31:0) address 
@@ -672,24 +732,24 @@
   sw x1, 0(x2)  ## store return address (ra) on sp
   addi x2, x2, 4  ## increment sp
 
-  waitUntilIOIn2Start: 
+  waitUntilIOInStart: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
     andi x7, x3, 4                  # mask to keep IOIn(2) 
     beq  x7, x0, waitUntilIOIn2     # chk / progress if IOIn(2) = 0
-    beq  x0, x0, waitUntilIOIn2Start  # unconditional loop (else keep checking)
+    beq  x0, x0, waitUntilIOInStart  # unconditional loop (else keep checking)
   
   waitUntilIOIn2: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
     andi x7, x3, 4                  # mask to keep IOIn(2) 
-    beq  x3, x31, waitUntilR
-    beq  x7, x8, waitUntilIOIn2Eq0b # chk / progress if IOIn(2) = 1
+    beq  x3, x31, waitUntilR        # if L activated, we go to waiting for R
+    beq  x7, x8, waitUntilIOIn2Eq0 # chk / progress if IOIn(2) = 1
     beq  x0, x0, waitUntilIOIn2  # unconditional loop (else keep checking)
 
-  waitUntilIOIn2Eq0b: 
+  waitUntilIOIn2Eq0: 
     lw   x3, 0(x4)                  # read IOIn(31:0) switches
     andi x7, x3, 4                  # mask to keep IOIn(2) 
     beq  x7, x0, ret_waitForInput010  # chk / progress if IOIn(2) = 0
-    beq  x0, x0, waitUntilIOIn2Eq0b # unconditional loop (else keep checking)
+    beq  x0, x0, waitUntilIOIn2Eq0 # unconditional loop (else keep checking)
 
   waitUntilR:
     lw x3, 0(x4)
@@ -702,14 +762,14 @@
     beq x0, x0, waitUntilLEnd       ## unconditional loop 
 
   ret_waitForInputLR:
-    jal x1, clearArena
+    jal x1, clearArena        ## clear start screen
     jal x1, setupArenaFMode   ## if L-R-L activated we set up f-Mode
     addi x2, x2, -4  # decrement sp by 4
     lw x1, 0(x2)  # load ra from stack
     jalr x0, 0(x1)                  # ret
 
   ret_waitForInput010:
-    jal x1, clearArena
+    jal x1, clearArena        ## clear start screen
     jal x1, setupDefaultArena ## if 0-1-0 activated, default setup 
     addi x2, x2, -4  # decrement sp by 4
     lw x1, 0(x2)  # load ra from stack
@@ -749,7 +809,7 @@
     lui x12, 0x7577a
     addi x12, x12, 0x2a8
     sw x12, 0(x31)
-    jalr x0, 0(x1)
+    jalr x0, 0(x1)      # ret
 
   endScreen:
     addi x31, x0, 52     #1
@@ -792,14 +852,14 @@
     lui x12, 0x1C10F
     addi x12, x12, 0x490
     sw x12, 0(x31)
-    jalr x0, 0(x1)
+    jalr x0, 0(x1)      # ret
 
   endGame:                # highlight game over in display
     bne x11, x29, displayloop  
     jal x1, bigDelay               
     displayloop:          ## loops and flickers GAME OVER message to user
       jal x1, endScreen
-      jal x1, bigDelay
+      jal x1, bigDelay    ## clears Arena
       jal x1, bigDelay
     beq x0, x0, displayloop   ## loop until reset
     
