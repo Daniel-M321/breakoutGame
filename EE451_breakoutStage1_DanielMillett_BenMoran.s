@@ -83,10 +83,10 @@
       jal x1, UpdateScoreMem
       jal x1, UpdateLivesMem
       add x9, x0, x24         # load ballNumDlyCounter start value
-      beq x16, x0, resetWall # if wall has been fully destroyed, reset it
+      beq x16, x0, resetWall  ## if wall has been fully destroyed, reset it. If score is 64, we end the game
       jal x0, loop1
     
-    addi x2, x2, 16  ## restore sp back to init
+    addi x2, x2, 16          ## restore sp back to init
     1b: jal x0, 1b           # loop until reset asserted
   
 
@@ -119,7 +119,7 @@
 
   chkBallZone:
     addi x4, x0, 56
-    bgt x20, x4, zone6  ## if highest y address (y=15), ball in wallVec
+    bgt x20, x4, zone6  ## if CSBallYAdd highest y address (y=15), ball in wallVec
     addi x4, x0, 30
     bgt x18, x4, leftWall ## if highest x address (x>30), ball at left wall
     addi x4, x0, 1
@@ -137,13 +137,13 @@
     addi x4, x0, 1
     blt x18, x4, JMPSW ## if lowest x address (x<1), ball in right corner
     addi x4, x0, 1
-    beq x22, x4, JMPS   ## if Dir=1 (N), go S 
+    beq x22, x4, JMPS   ## if Dir=1 (N), go S (hit top wall)
     beq x22, x0, z6Lft   ## if Dir=0 (NW)
     addi x4, x0, 2
     beq x22, x4, z6Rt   ## if Dir=2 (NE)    
     jalr x0, 0(x1)
 
-    z6Lft: #B, Zone6 ball going left
+    z6Lft: #B, Zone6 ball going left (check for wall brick)
     slli x11, x17, 1 #shifting the ball left 1
     and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
     beq x0, x12, JMPSW #no brick to left so can bounce off top wall
@@ -152,7 +152,7 @@
     addi x14, x14, 1  # counter
     beq x0, x0, JMPSE
 
-    z6Rt: #B
+    z6Rt: #B, Zone6 ball going right (check for wall brick)
     srli x11, x17, 1 #shifting the ball right 1
     and x12, x11, x16 #anding ball vector shifted left with wall to see if wall to left
     beq x0, x12, JMPSE #no brick to right so can bounce of top wall
@@ -164,9 +164,9 @@
 
     leftWall:
     addi x4, x0, 16
-    blt x20, x4, zone7  ## if y is just above paddle zone, ball at bottom left corner
+    blt x20, x4, zone7  ## if y is just above paddle zone (y<4), ball at bottom left corner
     addi x4, x0, 52
-    blt x20, x4, zone5  ## if y is between corners, ball against left wall not in corners
+    blt x20, x4, zone5  ## if y is between corners (y<14), ball against left wall not in corners
     beq x0, x0, zone8 #B   else ball in top left corner below wallVec
     jalr x0, 0(x1)
 
@@ -181,13 +181,13 @@
 
     zone8: #B          top left corner below wallVec
     addi x4, x0, 2
-    bgt x22, x4, JMPSE #Checking if the direction is south -> mirror bounce
+    bgt x22, x4, JMPSE #Checking if the direction is south (exiting wall) -> bounce off wall
     and x11, x16, x17 # Checking if the ball is below a brick
-    bne x0, x11, zone8Brick #there is a brick if this is equal
+    bne x0, x11, zone8Brick #there is a brick if this is true
     srli x11, x17, 1 #Shifting the ball right one
-    and x12, x11, x16 # Anding the wall and shifted wall right one
+    and x12, x11, x16 # Anding the wall and shifted ball right one
     addi x13, x16, 0                ## stores wall without ball vector for restoring later
-    beq x12, x0, putBallInWallL #if this is equal, no brick in way, put ball in wall
+    beq x12, x0, putBallInWallL #if this is equal, still no brick in way, put ball in wall
     addi x29, x29, 1   ## increment score   
     xor x16, x11, x16 # deleting wall piece with temp shifted Ball
     beq x0, x0, JMPSE
@@ -199,7 +199,7 @@
     beq x0, x0, JMPSE
 
     putBallInWallL:
-    or x16, x16, x11
+    or x16, x16, x11      # OR shifted ball with wallVec
     beq x0, x0, JMPNE 
 
 
@@ -227,15 +227,15 @@
     beq x0, x0, JMPNW     ## going into wall zone
 
 
-    zone3:
+    zone3:                        ## below wallVec
     addi x4, x0, 2
-    bgt x22, x4, updateBallLocationLinear ## Checking if the direction is south
+    bgt x22, x4, updateBallLocationLinear ## Checking if the direction is south (exiting wall)
     addi x13, x16, 0                ## stores wall without ball vector for restoring later
     and x4, x16, x17
     bne x4, x0, ballHitWall         ## if ball and wall brick beside each other going anyway north, ball has hit wall
-    beq x0, x22, checkIfWallLeft    ## if no brick above us and we are not going directly north, we check the bricks beside us
+    beq x0, x22, checkIfWallLeft    ## if no brick above us and we going NW, we check the brick to left
     addi x4, x0, 2
-    beq x4, x22, checkIfWallRight
+    beq x4, x22, checkIfWallRight   ## if no brick above us and we going NE, we check the brick to right
     or x16, x16, x17                ## if not going south or NW or NE and there is no wall brick, we are going north into the wall vector
     beq x0, x0, JMPN
 
@@ -264,7 +264,7 @@
     beq x0, x0, JMPNE
 
     scoreDiag:
-    xor x16, x16, x31               ## XOR ball and wall to delete brick where previously shifted ball is
+    xor x16, x16, x31               ## XOR shifted ball and wall to delete brick where shifted ball is
     addi x29, x29, 1                ## score
     addi x14, x14, 1
     addi x4, x0, 2                  ## NW=2
@@ -272,7 +272,7 @@
     beq x0, x22, JMPSE
 
   
-    zone2:
+    zone2:                      ## paddle zone
     addi x4, x0, 1
     beq x22, x4, JMPN
 
@@ -284,12 +284,12 @@
     addi x12, x0, -1  
     blt x31, x12, endRound        ## if < -1, not near paddle
     and x4, x17, x25              ## AND ball and paddle to see if they're definetly beside each other
-    bne x4, x0, hitMiddlePaddle   ## if AND postive, paddle bounces ball
+    bne x4, x0, hitMiddlePaddle   ## if AND postive, ball in middle of paddle
     addi x12, x0, 3
-    beq x12, x22, JMPNW           ## if coming in at an angle we can bounce at angle off paddle
+    beq x12, x22, JMPNW           ## else if AND negative and ball coming in at an angle we can bounce at angle off the corner of the paddle
     addi x12, x0, 5
     beq x12, x22, JMPNE
-    beq x0, x0, endRound
+    beq x0, x0, endRound          ## finally the ball is on the edge of paddle but not coming in at correct angle
 
     hitMiddlePaddle:            ## SEE fearghals rebound strategy
     addi x4, x0, 5
@@ -313,28 +313,28 @@
     jalr x0, 0(x1)
 
 
-    zone7:
+    zone7:                      ## bottom left corner
     and x4, x25, x17              ## if ball and paddle are beside each other, AND will result in 1
     beq x4, x0, endRound          ## therefore if paddle not below, we lose a life
     addi x23, x0, 2               ## however if the paddle is below, we can bounce the ball
     bne x4, x0, JMPNE
     jalr x0, 0(x1)
 
-    zone5:
+    zone5:                      ## Left wall not in corners
     beq x22, x0, JMPNE            ## if CSdir = NW -> NSdir = NE
     addi x4, x0, 5
     beq x22, x4, JMPSE            ## if CSdir = SW -> NSdir = SE
     beq x0, x0, updateBallLocationLinear  ## ball will go either N or S linearly
     jalr x0, 0(x1)
 
-    zone10:
+    zone10:                     ## bottom right corner
     and x4, x25, x17              ## if ball and paddle are beside each other, AND will result in 1
     beq x4, x0, endRound          ## therefore if paddle not below, we lose a life
     addi x23, x0, 0               ## however if the paddle is below, we can bounce the ball
     bne x4, x0, JMPNW
     jalr x0, 0(x1)
 
-    zone4:
+    zone4:                      ## right wall not in corners
     addi x4, x0, 2
     beq x22, x4, JMPNW            ## if CSdir = NE -> NSdir = NW
     addi x4, x0, 3
@@ -349,7 +349,7 @@
   ## ====== Functions for zones START ======
   endRound:
     addi x30, x30, -1   ## decrementing a life 
-    beq x30, x0, endGame
+    beq x30, x0, endGame ## if 0 lives, game lost
     # ball
     addi x18, x0, 16    ## CSBallXAdd (4:0)
     addi x19, x0, 16    ## NSBallXAdd (4:0)
@@ -362,7 +362,7 @@
     # paddle
     lui  x25, 0x0007c   ## paddleVec 0b0000 0000 0000 0111 1100 0000 0000 0000 = 0x0007c000
     addi x27, x0, 14
-    beq x0, x0, sadFace ## display sad face
+    beq x0, x0, sadFace ## display sad face for losing life
 
   updateBallLocationLinear:  ## update linear ball direction according to CSBallDir
     addi x4, x0, 1
